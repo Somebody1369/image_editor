@@ -3,8 +3,8 @@
  * The live, declarative colour transform. The op-model compiles to SVG <filter>
  * primitives and the preview canvas references this filter via CSS `filter: url()`.
  * Dragging a slider only updates these primitive attributes — no canvas redraw —
- * which is what makes the preview real-time. (LiveArt's stack is SVG-heavy, so the
- * edit pipeline is expressed natively as an SVG filter graph.)
+ * which is what makes the preview real-time. (The edit pipeline is expressed
+ * natively as an SVG filter graph on an SVG-heavy stack.)
  *
  * color-interpolation-filters="sRGB" matches the sRGB space of the canvas
  * `ctx.filter` export, so the preview and the exported pixels agree.

@@ -1,4 +1,4 @@
-# LiveArt · Image Editor
+# Image Editor
 
 A small, non-destructive browser image editor (Vue 3 + Vuetify 3 + Pinia +
 TypeScript). Upload an image, crop it, adjust brightness / contrast / saturation with

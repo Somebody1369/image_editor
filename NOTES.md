@@ -50,9 +50,9 @@ colour backends over the same parameters** (`src/core/filter.ts`):
 - **SVG `<filter>`** — drives the **live preview**. The preview canvas draws only the
   cropped source; the colour transform is a real SVG filter graph referenced with
   CSS `filter: url(#editorFilter)`. Dragging a slider only updates filter primitive
-  attributes → the preview updates in real time with **no canvas redraw**. LiveArt's
-  stack is SVG-heavy, so expressing the pipeline as an SVG filter graph is the
-  natural fit.
+  attributes → the preview updates in real time with **no canvas redraw**. An
+  SVG-heavy front-end stack makes an SVG filter graph the natural way to express
+  the pipeline.
 - **`ctx.filter` string** — bakes the **export** at full resolution.
 
 Both follow the CSS Filter Effects spec, so they agree. brightness (`×kb`) then

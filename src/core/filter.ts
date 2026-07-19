@@ -5,7 +5,7 @@
  * render backends over the exact same parameters:
  *   - `compileCanvasFilter`  → a `ctx.filter` string (used for the pixel-exact export bake)
  *   - `compileSvgPrimitives` → SVG <filter> primitives (used for the live, declarative
- *                              preview — LiveArt's stack is SVG-heavy)
+ *                              preview — SVG-native)
  *
  * Both follow the CSS Filter Effects spec, so they produce the same result. The
  * matrices below are the spec's exact grayscale()/sepia() matrices, which is what

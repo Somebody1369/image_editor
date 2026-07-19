@@ -4,7 +4,7 @@ import { createVuetify } from 'vuetify'
 import * as components from 'vuetify/components'
 import * as directives from 'vuetify/directives'
 
-export const THEME_STORAGE_KEY = 'liveart-theme'
+export const THEME_STORAGE_KEY = 'image-editor-theme'
 export const DARK_THEME = 'framerDark'
 export const LIGHT_THEME = 'framerLight'
 

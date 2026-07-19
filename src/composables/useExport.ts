@@ -32,7 +32,7 @@ export function useExport() {
   }
 
   function exportJson(): void {
-    downloadText(serializeDocument(store.buildDocument(store.embedOriginal)), `${baseName()}.liveart.json`)
+    downloadText(serializeDocument(store.buildDocument(store.embedOriginal)), `${baseName()}.edits.json`)
   }
 
   return { exporting, exportImage, exportJson }
