@@ -128,6 +128,17 @@ export const useEditorStore = defineStore('editor', () => {
     viewOriginal.value = false
   }
 
+  /** Unload the current image and return to the empty state. */
+  function removeImage(): void {
+    original.value = null
+    sourceMeta.value = null
+    sourceDataUrl.value = null
+    operations.value = []
+    undoStack.value = []
+    redoStack.value = []
+    viewOriginal.value = false
+  }
+
   function buildDocument(embed: boolean): EditDocument {
     if (!sourceMeta.value) throw new Error('No image loaded')
     const embedded = embed ? sourceDataUrl.value ?? undefined : undefined
@@ -166,6 +177,7 @@ export const useEditorStore = defineStore('editor', () => {
     reset,
     setViewOriginal,
     loadImage,
+    removeImage,
     buildDocument,
     applyOperations,
   }

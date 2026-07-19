@@ -1,6 +1,9 @@
 <script setup lang="ts">
 /** Framer-style left sidebar: brand, a "Source" group, then the control sections. */
+import { useEditorStore } from '../stores/editor'
 import ControlsPanel from './ControlsPanel.vue'
+
+const store = useEditorStore()
 
 defineProps<{
   upload: () => void
@@ -52,6 +55,16 @@ defineProps<{
           @click="importJson"
         >
           Import JSON
+        </v-btn>
+        <v-btn
+          v-if="store.isLoaded"
+          block
+          variant="text"
+          class="nav-btn justify-start"
+          prepend-icon="mdi-image-remove-outline"
+          @click="store.removeImage()"
+        >
+          Remove image
         </v-btn>
       </div>
 
