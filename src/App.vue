@@ -4,11 +4,12 @@ import { useTheme } from 'vuetify'
 import { useEditorStore } from './stores/editor'
 import { useImageSource } from './composables/useImageSource'
 import { DARK_THEME, LIGHT_THEME, THEME_STORAGE_KEY } from './plugins/vuetify'
+import AppSidebar from './components/AppSidebar.vue'
 import EditorCanvas from './components/EditorCanvas.vue'
 import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
-const { error, loadFile, upload, loadSample, clearError } = useImageSource()
+const { loading, error, loadFile, upload, loadSample, importJson, clearError } = useImageSource()
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
@@ -33,6 +34,13 @@ function onDrop(event: DragEvent): void {
     <SvgFilterDefs />
 
     <div class="shell">
+      <AppSidebar
+        :upload="upload"
+        :load-sample="loadSample"
+        :import-json="importJson"
+        :loading="loading"
+      />
+
       <div class="workspace">
         <header class="topbar">
           <span
