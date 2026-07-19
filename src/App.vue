@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useTheme } from 'vuetify'
 import { useEditorStore } from './stores/editor'
 import { useImageSource } from './composables/useImageSource'
+import { useExport } from './composables/useExport'
 import { DARK_THEME, LIGHT_THEME, THEME_STORAGE_KEY } from './plugins/vuetify'
 import AppSidebar from './components/AppSidebar.vue'
 import EditorCanvas from './components/EditorCanvas.vue'
@@ -10,6 +11,7 @@ import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
 const { loading, error, loadFile, upload, loadSample, importJson, clearError } = useImageSource()
+const { exporting, exportImage } = useExport()
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
@@ -84,6 +86,16 @@ function onDrop(event: DragEvent): void {
             :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
             @click="toggleTheme"
           />
+          <v-btn
+            color="primary"
+            class="ms-2"
+            prepend-icon="mdi-tray-arrow-down"
+            :disabled="!store.isLoaded"
+            :loading="exporting"
+            @click="exportImage"
+          >
+            Export
+          </v-btn>
         </header>
 
         <main class="canvas-area" @dragover.prevent @drop.prevent="onDrop">

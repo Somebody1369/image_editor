@@ -5,6 +5,7 @@ import { useEditorStore } from '../stores/editor'
 import AdjustmentPanel from './AdjustmentPanel.vue'
 import FilterPanel from './FilterPanel.vue'
 import CropTool from './CropTool.vue'
+import ExportPanel from './ExportPanel.vue'
 
 const store = useEditorStore()
 const { isLoaded, sourceMeta } = storeToRefs(store)
@@ -42,6 +43,9 @@ const { isLoaded, sourceMeta } = storeToRefs(store)
         Hold to view original
       </v-btn>
     </div>
+    <v-divider />
+
+    <ExportPanel />
   </div>
 
   <div v-else class="pa-4 text-medium-emphasis text-caption">
