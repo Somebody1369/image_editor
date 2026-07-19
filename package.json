@@ -14,8 +14,10 @@
     "node": ">=20.19.0"
   },
   "dependencies": {
+    "@mdi/font": "^7.4.47",
     "pinia": "^3.0.4",
-    "vue": "^3.5.39"
+    "vue": "^3.5.39",
+    "vuetify": "^3.12.10"
   },
   "devDependencies": {
     "@types/node": "^24.13.2",

@@ -1,0 +1,118 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useTheme } from 'vuetify'
+import { useEditorStore } from './stores/editor'
+import { DARK_THEME, LIGHT_THEME, THEME_STORAGE_KEY } from './plugins/vuetify'
+
+const store = useEditorStore()
+
+const theme = useTheme()
+const isDark = computed(() => theme.global.current.value.dark)
+function toggleTheme(): void {
+  const next = isDark.value ? LIGHT_THEME : DARK_THEME
+  theme.global.name.value = next
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, next)
+  } catch {
+    /* ignore storage failures (private mode) */
+  }
+}
+</script>
+
+<template>
+  <v-app>
+    <div class="shell">
+      <div class="workspace">
+        <header class="topbar">
+          <span
+            v-if="store.isLoaded"
+            class="text-body-2 font-weight-medium text-truncate"
+          >
+            {{ store.sourceMeta?.name }}
+          </span>
+          <span v-else class="text-body-2 text-medium-emphasis">No image</span>
+
+          <v-spacer />
+
+          <v-btn
+            icon="mdi-undo"
+            size="small"
+            variant="text"
+            :disabled="!store.canUndo"
+            aria-label="Undo"
+            @click="store.undo()"
+          />
+          <v-btn
+            icon="mdi-redo"
+            size="small"
+            variant="text"
+            :disabled="!store.canRedo"
+            aria-label="Redo"
+            @click="store.redo()"
+          />
+          <v-btn
+            icon="mdi-backup-restore"
+            size="small"
+            variant="text"
+            :disabled="!store.hasEdits"
+            aria-label="Reset all edits"
+            @click="store.reset()"
+          />
+          <v-btn
+            :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+            size="small"
+            variant="text"
+            :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
+            @click="toggleTheme"
+          />
+        </header>
+
+        <main class="canvas-area"></main>
+      </div>
+    </div>
+  </v-app>
+</template>
+
+<style scoped>
+.shell {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+.workspace {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  flex: 0 0 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(var(--v-theme-on-surface), 0.08);
+  background: rgb(var(--v-theme-surface));
+}
+.canvas-area {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+@media (max-width: 760px) {
+  .shell {
+    height: auto;
+    min-height: 100vh;
+    flex-direction: column;
+    overflow: visible;
+  }
+  .workspace {
+    order: 1;
+  }
+  .canvas-area {
+    min-height: 52vh;
+  }
+}
+</style>

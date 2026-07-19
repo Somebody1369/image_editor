@@ -11,3 +11,61 @@ body {
 #app {
   min-height: 100vh;
 }
+
+/* Let the editor layout fill the space under the app bar. */
+.v-main {
+  display: flex;
+  flex-direction: column;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* --- Framer-flat background (subtle top highlight only) --------------------- */
+.v-application {
+  background:
+    radial-gradient(1200px 480px at 50% -12%, rgba(255, 255, 255, 0.025), transparent 70%),
+    rgb(var(--v-theme-background)) !important;
+}
+
+/* --- Buttons: circular icons, neutral segmented toggles -------------------- */
+.v-btn--icon {
+  border-radius: 50% !important;
+}
+.v-btn-toggle {
+  border-radius: 10px;
+  overflow: hidden;
+  background: rgba(var(--v-theme-on-surface), 0.05);
+}
+.v-btn-toggle .v-btn {
+  border-radius: 0 !important;
+}
+.v-btn-toggle .v-btn--active {
+  background: rgba(var(--v-theme-on-surface), 0.1) !important;
+  color: rgb(var(--v-theme-on-surface)) !important;
+}
+
+/* Lighter, airier headings. No all-caps — buttons and section labels keep their
+   written case (only the first letter is capitalised). */
+.text-h6 {
+  font-weight: 400 !important;
+  letter-spacing: 0.2px;
+}
+.text-overline {
+  text-transform: none !important;
+  letter-spacing: 0.4px !important;
+  font-size: 0.82rem !important;
+}
+.v-btn {
+  text-transform: none;
+  letter-spacing: normal;
+}
