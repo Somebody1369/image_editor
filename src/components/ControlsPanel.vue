@@ -1,8 +1,9 @@
 <script setup lang="ts">
-/** The right-hand control column: adjustments. */
+/** The right-hand control column: adjustments, filter, and hold-to-compare. */
 import { storeToRefs } from 'pinia'
 import { useEditorStore } from '../stores/editor'
 import AdjustmentPanel from './AdjustmentPanel.vue'
+import FilterPanel from './FilterPanel.vue'
 
 const store = useEditorStore()
 const { isLoaded, sourceMeta } = storeToRefs(store)
@@ -19,6 +20,24 @@ const { isLoaded, sourceMeta } = storeToRefs(store)
     <v-divider />
 
     <AdjustmentPanel />
+    <v-divider />
+    <FilterPanel />
+    <v-divider />
+
+    <div class="pa-4">
+      <v-btn
+        block
+        variant="tonal"
+        prepend-icon="mdi-compare"
+        aria-label="Hold to view the original image"
+        @pointerdown="store.setViewOriginal(true)"
+        @pointerup="store.setViewOriginal(false)"
+        @pointerleave="store.setViewOriginal(false)"
+        @pointercancel="store.setViewOriginal(false)"
+      >
+        Hold to view original
+      </v-btn>
+    </div>
   </div>
 
   <div v-else class="pa-4 text-medium-emphasis text-caption">
