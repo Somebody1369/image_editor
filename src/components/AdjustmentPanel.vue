@@ -4,6 +4,7 @@
  * pointer-down (@start), then every move updates the single `adjust` operation.
  * The preview updates in real time through the SVG filter — no canvas redraw.
  */
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useEditorStore } from '../stores/editor'
 
@@ -18,6 +19,15 @@ const rows: { key: AdjustKey; label: string; icon: string }[] = [
   { key: 'saturation', label: 'Saturation', icon: 'mdi-palette-outline' },
 ]
 
+const isNeutral = computed(
+  () =>
+    adjust.value.brightness === 0 &&
+    adjust.value.contrast === 0 &&
+    adjust.value.saturation === 0,
+)
+
+const format = (v: number): string => (v > 0 ? `+${v}` : `${v}`)
+
 function onInput(key: AdjustKey, value: number): void {
   const patch: Partial<Record<AdjustKey, number>> = { [key]: value }
   store.setAdjust(patch)
@@ -28,18 +38,35 @@ function resetOne(key: AdjustKey): void {
   store.beginChange()
   onInput(key, 0)
 }
+
+function resetAll(): void {
+  if (isNeutral.value) return
+  store.beginChange()
+  store.setAdjust({ brightness: 0, contrast: 0, saturation: 0 })
+}
 </script>
 
 <template>
   <div class="pa-4">
-    <div class="text-overline text-medium-emphasis mb-1">Adjustments</div>
-    <div v-for="row in rows" :key="row.key" class="mb-1">
-      <div class="d-flex align-center justify-space-between">
-        <span class="text-body-2">
-          <v-icon :icon="row.icon" size="18" class="me-1" />{{ row.label }}
-        </span>
-        <span class="text-caption text-medium-emphasis" style="font-variant-numeric: tabular-nums">
-          {{ adjust[row.key] > 0 ? '+' : '' }}{{ adjust[row.key] }}
+    <div class="d-flex align-center justify-space-between mb-2">
+      <span class="text-overline text-medium-emphasis">Adjustments</span>
+      <v-btn
+        size="x-small"
+        variant="text"
+        prepend-icon="mdi-restore"
+        :disabled="isNeutral"
+        @click="resetAll"
+      >
+        Reset all
+      </v-btn>
+    </div>
+
+    <div v-for="row in rows" :key="row.key" class="mb-2">
+      <div class="d-flex align-center text-body-2 mb-1">
+        <v-icon :icon="row.icon" size="18" class="me-2" />
+        <span>{{ row.label }}:</span>
+        <span class="ms-1 text-medium-emphasis" style="font-variant-numeric: tabular-nums">
+          {{ format(adjust[row.key]) }}
         </span>
       </div>
       <v-slider
