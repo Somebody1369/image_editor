@@ -3,6 +3,8 @@ import { computed } from 'vue'
 import { useTheme } from 'vuetify'
 import { useEditorStore } from './stores/editor'
 import { DARK_THEME, LIGHT_THEME, THEME_STORAGE_KEY } from './plugins/vuetify'
+import EditorCanvas from './components/EditorCanvas.vue'
+import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
 
@@ -21,6 +23,8 @@ function toggleTheme(): void {
 
 <template>
   <v-app>
+    <SvgFilterDefs />
+
     <div class="shell">
       <div class="workspace">
         <header class="topbar">
@@ -67,7 +71,9 @@ function toggleTheme(): void {
           />
         </header>
 
-        <main class="canvas-area"></main>
+        <main class="canvas-area">
+          <EditorCanvas />
+        </main>
       </div>
     </div>
   </v-app>
