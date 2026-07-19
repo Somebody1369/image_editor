@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import { useEditorStore } from '../stores/editor'
 import AdjustmentPanel from './AdjustmentPanel.vue'
 import FilterPanel from './FilterPanel.vue'
+import CropTool from './CropTool.vue'
 
 const store = useEditorStore()
 const { isLoaded, sourceMeta } = storeToRefs(store)
@@ -17,6 +18,9 @@ const { isLoaded, sourceMeta } = storeToRefs(store)
         {{ sourceMeta.width }} × {{ sourceMeta.height }} px
       </div>
     </div>
+    <v-divider />
+
+    <div class="pa-4"><CropTool /></div>
     <v-divider />
 
     <AdjustmentPanel />
