@@ -2,11 +2,13 @@
 import { computed } from 'vue'
 import { useTheme } from 'vuetify'
 import { useEditorStore } from './stores/editor'
+import { useImageSource } from './composables/useImageSource'
 import { DARK_THEME, LIGHT_THEME, THEME_STORAGE_KEY } from './plugins/vuetify'
 import EditorCanvas from './components/EditorCanvas.vue'
 import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
+const { error, loadFile, upload, loadSample, clearError } = useImageSource()
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
@@ -18,6 +20,11 @@ function toggleTheme(): void {
   } catch {
     /* ignore storage failures (private mode) */
   }
+}
+
+function onDrop(event: DragEvent): void {
+  const file = event.dataTransfer?.files?.[0]
+  if (file) void loadFile(file)
 }
 </script>
 
@@ -71,11 +78,15 @@ function toggleTheme(): void {
           />
         </header>
 
-        <main class="canvas-area">
-          <EditorCanvas />
+        <main class="canvas-area" @dragover.prevent @drop.prevent="onDrop">
+          <EditorCanvas @upload="upload" @sample="loadSample" />
         </main>
       </div>
     </div>
+
+    <v-snackbar :model-value="!!error" color="error" timeout="4000" @update:model-value="clearError">
+      {{ error }}
+    </v-snackbar>
   </v-app>
 </template>
 
