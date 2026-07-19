@@ -69,3 +69,14 @@ body {
   text-transform: none;
   letter-spacing: normal;
 }
+
+/* Slider handle: a rounded rectangle instead of a circle. */
+.v-slider-thumb__surface {
+  width: 12px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+}
+.v-slider-thumb__surface::before,
+.v-slider-thumb__ripple {
+  border-radius: 5px !important;
+}
