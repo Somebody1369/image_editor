@@ -15,11 +15,14 @@ import {
 import type { EditDocument } from '../core/document'
 import { parseDocument } from '../core/document'
 
+// Module-level singleton: loading/error/notice are shared across every call site (the
+// app bar, the sidebar, drag-and-drop), so the state stays in sync without prop-drilling.
+const loading = ref(false)
+const error = ref<string | null>(null)
+const notice = ref<string | null>(null)
+
 export function useImageSource() {
   const store = useEditorStore()
-  const loading = ref(false)
-  const error = ref<string | null>(null)
-  const notice = ref<string | null>(null)
 
   async function loadFile(file: File): Promise<void> {
     loading.value = true

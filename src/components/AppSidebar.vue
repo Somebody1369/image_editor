@@ -4,20 +4,25 @@
  * and inside the slide-in drawer on mobile. Emits `navigate` after an action so the
  * mobile drawer can close.
  */
+import {
+  mdiCodeJson,
+  mdiImageEditOutline,
+  mdiImageMultipleOutline,
+  mdiImageRemoveOutline,
+  mdiTrayArrowUp,
+} from '@mdi/js'
 import { useEditorStore } from '../stores/editor'
+import { useImageSource } from '../composables/useImageSource'
 
 const store = useEditorStore()
 const emit = defineEmits<{ navigate: [] }>()
 
-defineProps<{
-  upload: () => void
-  loadSample: () => void
-  importJson: () => void
-  loading?: boolean
-}>()
+// Source actions come straight from the shared composable (singleton state), so no
+// callbacks need to be threaded through props.
+const { upload, loadSample, importJson, loading } = useImageSource()
 
-function run(fn: () => void): void {
-  fn()
+function run(fn: () => void | Promise<void>): void {
+  void fn()
   emit('navigate')
 }
 function removeImage(): void {
@@ -30,7 +35,7 @@ function removeImage(): void {
   <div class="sidebar-nav">
     <div class="brand">
       <div class="brand-mark">
-        <v-icon icon="mdi-image-edit-outline" size="20" />
+        <v-icon :icon="mdiImageEditOutline" size="20" />
       </div>
       <div class="brand-text">
         <div class="brand-title">Image Editor</div>
@@ -45,7 +50,7 @@ function removeImage(): void {
         variant="text"
         class="nav-btn justify-start"
         :loading="loading"
-        prepend-icon="mdi-tray-arrow-up"
+        :prepend-icon="mdiTrayArrowUp"
         @click="run(upload)"
       >
         Upload image
@@ -54,7 +59,7 @@ function removeImage(): void {
         block
         variant="text"
         class="nav-btn justify-start"
-        prepend-icon="mdi-image-multiple-outline"
+        :prepend-icon="mdiImageMultipleOutline"
         @click="run(loadSample)"
       >
         Load sample
@@ -63,7 +68,7 @@ function removeImage(): void {
         block
         variant="text"
         class="nav-btn justify-start"
-        prepend-icon="mdi-code-json"
+        :prepend-icon="mdiCodeJson"
         @click="run(importJson)"
       >
         Import JSON
@@ -73,7 +78,7 @@ function removeImage(): void {
         block
         variant="text"
         class="nav-btn justify-start"
-        prepend-icon="mdi-image-remove-outline"
+        :prepend-icon="mdiImageRemoveOutline"
         @click="removeImage"
       >
         Remove image

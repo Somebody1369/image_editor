@@ -9,9 +9,12 @@ import { renderToBlob } from '../core/renderer'
 import { serializeDocument } from '../core/document'
 import { downloadBlob, downloadText } from '../utils/download'
 
+// Module-level singleton: the top-bar Export button and the export panel share one
+// `exporting` flag, so a bake started from either place shows the spinner on both.
+const exporting = ref(false)
+
 export function useExport() {
   const store = useEditorStore()
-  const exporting = ref(false)
 
   const baseName = (): string => (store.sourceMeta?.name ?? 'image').replace(/\.[^.]+$/, '')
 

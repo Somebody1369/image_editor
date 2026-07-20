@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay, useTheme } from 'vuetify'
+import {
+  mdiBackupRestore,
+  mdiMenu,
+  mdiRedo,
+  mdiTrayArrowDown,
+  mdiUndo,
+  mdiWeatherNight,
+  mdiWeatherSunny,
+} from '@mdi/js'
 import { useEditorStore } from './stores/editor'
 import { useImageSource } from './composables/useImageSource'
 import { useExport } from './composables/useExport'
@@ -11,17 +20,7 @@ import EditorCanvas from './components/EditorCanvas.vue'
 import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
-const {
-  loading,
-  error,
-  notice,
-  loadFile,
-  upload,
-  loadSample,
-  importJson,
-  clearError,
-  clearNotice,
-} = useImageSource()
+const { error, notice, loadFile, upload, loadSample, clearError, clearNotice } = useImageSource()
 const { exporting, exportImage } = useExport()
 
 const { mobile: isMobile } = useDisplay()
@@ -36,6 +35,10 @@ function closeDrawer(): void {
 // Editor keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y = redo.
 function onKeydown(event: KeyboardEvent): void {
   if (!(event.ctrlKey || event.metaKey)) return
+  // Don't mutate edits behind an open modal dialog (e.g. the crop modal, whose cropper
+  // is seeded once and wouldn't reflect an undo/redo happening under it). Scoped to
+  // .v-dialog so non-modal overlays (snackbars, menus) don't block the shortcut.
+  if (document.querySelector('.v-dialog.v-overlay--active')) return
   const key = event.key.toLowerCase()
   if (key === 'z' && !event.shiftKey) {
     event.preventDefault()
@@ -72,13 +75,7 @@ function onDrop(event: DragEvent): void {
 
     <div class="shell" :class="{ 'shell--mobile': isMobile }">
       <aside class="sidebar" :class="{ 'sidebar--open': isMobile && drawerOpen }">
-        <AppSidebar
-          :upload="upload"
-          :load-sample="loadSample"
-          :import-json="importJson"
-          :loading="loading"
-          @navigate="closeDrawer"
-        />
+        <AppSidebar @navigate="closeDrawer" />
 
         <ControlsPanel v-if="!isMobile" />
 
@@ -87,7 +84,7 @@ function onDrop(event: DragEvent): void {
           <v-divider class="mb-3" />
           <div class="d-flex align-center ga-2">
             <v-btn
-              icon="mdi-undo"
+              :icon="mdiUndo"
               size="small"
               variant="tonal"
               :disabled="!store.canUndo"
@@ -95,7 +92,7 @@ function onDrop(event: DragEvent): void {
               @click="store.undo()"
             />
             <v-btn
-              icon="mdi-redo"
+              :icon="mdiRedo"
               size="small"
               variant="tonal"
               :disabled="!store.canRedo"
@@ -105,7 +102,7 @@ function onDrop(event: DragEvent): void {
             <v-btn
               variant="tonal"
               size="small"
-              prepend-icon="mdi-backup-restore"
+              :prepend-icon="mdiBackupRestore"
               :disabled="!store.hasEdits"
               @click="store.reset()"
             >
@@ -113,7 +110,7 @@ function onDrop(event: DragEvent): void {
             </v-btn>
             <v-spacer />
             <v-btn
-              :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+              :icon="isDark ? mdiWeatherSunny : mdiWeatherNight"
               size="small"
               variant="tonal"
               :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
@@ -134,7 +131,7 @@ function onDrop(event: DragEvent): void {
         <header class="topbar">
           <v-btn
             v-if="isMobile"
-            icon="mdi-menu"
+            :icon="mdiMenu"
             size="small"
             variant="text"
             aria-label="Open menu"
@@ -149,7 +146,7 @@ function onDrop(event: DragEvent): void {
 
           <template v-if="!isMobile">
             <v-btn
-              icon="mdi-undo"
+              :icon="mdiUndo"
               size="small"
               variant="text"
               :disabled="!store.canUndo"
@@ -157,7 +154,7 @@ function onDrop(event: DragEvent): void {
               @click="store.undo()"
             />
             <v-btn
-              icon="mdi-redo"
+              :icon="mdiRedo"
               size="small"
               variant="text"
               :disabled="!store.canRedo"
@@ -165,7 +162,7 @@ function onDrop(event: DragEvent): void {
               @click="store.redo()"
             />
             <v-btn
-              icon="mdi-backup-restore"
+              :icon="mdiBackupRestore"
               size="small"
               variant="text"
               :disabled="!store.hasEdits"
@@ -173,7 +170,7 @@ function onDrop(event: DragEvent): void {
               @click="store.reset()"
             />
             <v-btn
-              :icon="isDark ? 'mdi-weather-sunny' : 'mdi-weather-night'"
+              :icon="isDark ? mdiWeatherSunny : mdiWeatherNight"
               size="small"
               variant="text"
               :aria-label="isDark ? 'Switch to light theme' : 'Switch to dark theme'"
@@ -184,7 +181,7 @@ function onDrop(event: DragEvent): void {
           <v-btn
             color="primary"
             class="ms-2"
-            prepend-icon="mdi-tray-arrow-down"
+            :prepend-icon="mdiTrayArrowDown"
             :disabled="!store.isLoaded"
             :loading="exporting"
             @click="exportImage"
