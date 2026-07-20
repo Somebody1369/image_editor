@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** The right-hand control column: adjustments, filter, and hold-to-compare. */
 import { storeToRefs } from 'pinia'
+import { mdiCompare } from '@mdi/js'
 import { useEditorStore } from '../stores/editor'
 import AdjustmentPanel from './AdjustmentPanel.vue'
 import FilterPanel from './FilterPanel.vue'
@@ -9,6 +10,16 @@ import ExportPanel from './ExportPanel.vue'
 
 const store = useEditorStore()
 const { isLoaded, sourceMeta } = storeToRefs(store)
+
+// Keyboard parity for hold-to-compare: while Space/Enter is held the original shows,
+// mirroring the pointer press. `repeat` is ignored so auto-repeat doesn't re-trigger.
+function holdStart(event: KeyboardEvent): void {
+  if (event.repeat) return
+  store.setViewOriginal(true)
+}
+function holdEnd(): void {
+  store.setViewOriginal(false)
+}
 </script>
 
 <template>
@@ -33,12 +44,17 @@ const { isLoaded, sourceMeta } = storeToRefs(store)
       <v-btn
         block
         variant="tonal"
-        prepend-icon="mdi-compare"
+        :prepend-icon="mdiCompare"
         aria-label="Hold to view the original image"
         @pointerdown="store.setViewOriginal(true)"
         @pointerup="store.setViewOriginal(false)"
         @pointerleave="store.setViewOriginal(false)"
         @pointercancel="store.setViewOriginal(false)"
+        @keydown.space.prevent="holdStart"
+        @keydown.enter.prevent="holdStart"
+        @keyup.space="holdEnd"
+        @keyup.enter="holdEnd"
+        @blur="holdEnd"
       >
         Hold to view original
       </v-btn>
