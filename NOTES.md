@@ -164,6 +164,12 @@ workflow runs lint, format-check, tests and the type-checked build on every push
   and `Ctrl/⌘+Shift+Z` / `Ctrl/⌘+Y` are wired globally.
 - **Filters are fixed** (greyscale/sepia via spec matrices); no custom colour
   matrices or curves.
+- **Preview is a downscaled proxy** (long edge ≤ 1600px) while export bakes at full
+  resolution. The colour maths are per-pixel, so tone doesn't shift, but on very
+  detailed images the previewed sharpness/aliasing can differ slightly from the export.
+- **The crop box is pointer-only** (a cropperjs limitation): keyboard users can pick an
+  aspect preset and Apply the default crop, but can't drag/resize the rectangle. Numeric
+  x/y/width/height inputs bound to `cropper.setData` would close this — left out here.
 
 ## What a production version would add (out of scope on purpose)
 
