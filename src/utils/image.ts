@@ -97,7 +97,14 @@ export function createSampleImage(): LoadedImage {
   ctx.fillStyle = sky
   ctx.fillRect(0, 0, width, height)
 
-  const sun = ctx.createRadialGradient(width * 0.74, height * 0.3, 8, width * 0.74, height * 0.3, 170)
+  const sun = ctx.createRadialGradient(
+    width * 0.74,
+    height * 0.3,
+    8,
+    width * 0.74,
+    height * 0.3,
+    170,
+  )
   sun.addColorStop(0, '#fffbeb')
   sun.addColorStop(0.4, '#fde68a')
   sun.addColorStop(1, 'rgba(253,224,71,0)')
