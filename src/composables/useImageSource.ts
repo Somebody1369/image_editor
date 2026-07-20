@@ -14,15 +14,16 @@ import {
 } from '../utils/image'
 import type { EditDocument } from '../core/document'
 import { parseDocument } from '../core/document'
+import { useNotify } from './useNotify'
 
-// Module-level singleton: loading/error/notice are shared across every call site (the
-// app bar, the sidebar, drag-and-drop), so the state stays in sync without prop-drilling.
+// Module-level singleton: `loading` is shared across every call site (the app bar, the
+// sidebar, drag-and-drop), so the state stays in sync without prop-drilling. The
+// error/notice messages live in useNotify (shared with the export path).
 const loading = ref(false)
-const error = ref<string | null>(null)
-const notice = ref<string | null>(null)
 
 export function useImageSource() {
   const store = useEditorStore()
+  const { error, notice, clearError, clearNotice } = useNotify()
 
   async function loadFile(file: File): Promise<void> {
     loading.value = true
@@ -88,13 +89,6 @@ export function useImageSource() {
         `These edits were made for a ${doc.source.width}×${doc.source.height} image; ` +
         `the crop may not match the current ${cur.width}×${cur.height} image.`
     }
-  }
-
-  function clearError(): void {
-    error.value = null
-  }
-  function clearNotice(): void {
-    notice.value = null
   }
 
   return {
