@@ -16,8 +16,10 @@ Then open the printed local URL. No image handy? Click **Sample** to load a buil
 one. (Requires Node 20.19+ or 22.12+.)
 
 ```bash
-npm run build      # type-check (vue-tsc) + production build
-npm test           # unit tests (Vitest)
+npm run build         # type-check (vue-tsc) + production build
+npm test              # unit tests (Vitest)
+npm run lint          # ESLint (flat config: TS + Vue)
+npm run format:check  # Prettier
 ```
 
 ## Features
@@ -34,7 +36,7 @@ npm test           # unit tests (Vitest)
 ## How it works (short version)
 
 Edits are modelled as an ordered, serializable list of operations
-(`crop → adjust → filter`). The immutable original plus that list is *replayed* to
+(`crop → adjust → filter`). The immutable original plus that list is _replayed_ to
 derive every preview and export. The op-model compiles to two colour backends over
 the same parameters: an SVG `<filter>` for the live preview and a `ctx.filter` bake
 for the export. See [`NOTES.md`](./NOTES.md) for the full rationale and trade-offs.

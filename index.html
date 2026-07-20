@@ -8,6 +8,16 @@
     <meta name="theme-color" content="#f4f4f5" media="(prefers-color-scheme: light)" />
     <link rel="canonical" href="https://image-editor-tt.vercel.app/" />
 
+    <!-- Paint the stored theme's background before Vue/Vuetify mount, to avoid a flash. -->
+    <script>
+      try {
+        document.documentElement.style.backgroundColor =
+          localStorage.getItem('image-editor-theme') === 'framerLight' ? '#f4f4f5' : '#0a0a0b'
+      } catch (e) {
+        /* private mode: ignore */
+      }
+    </script>
+
     <title>Image Editor — non-destructive photo editing in your browser</title>
     <meta
       name="description"
