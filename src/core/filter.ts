@@ -20,7 +20,8 @@
  * exact colour matrices and saturate uses the spec's coefficients, which is what lets
  * the JS executor reproduce what the browser's SVG `<filter>` shows.
  */
-import type { AdjustOp, FilterName, FilterOp, Operation } from './operations'
+import type { FilterName, Operation } from './operations'
+import { findOp } from './operations'
 
 /** percentage in [-100, 100] → multiplicative factor (0 → 0, 0% → 1, 100 → 2). */
 const factor = (percent: number): number => 1 + percent / 100
@@ -85,13 +86,6 @@ function matrixFor(name: FilterName): ColorMatrix {
   }
 }
 
-function findAdjust(ops: readonly Operation[]): AdjustOp | undefined {
-  return ops.find((o): o is AdjustOp => o.type === 'adjust')
-}
-function findFilter(ops: readonly Operation[]): FilterOp | undefined {
-  return ops.find((o): o is FilterOp => o.type === 'filter')
-}
-
 export type SvgPrimitive =
   /** feComponentTransfer with a linear R/G/B function: out = slope·in + intercept. */
   | { kind: 'componentTransfer'; slope: number; intercept: number }
@@ -110,7 +104,7 @@ export type SvgPrimitive =
  */
 export function compileSvgPrimitives(ops: readonly Operation[]): SvgPrimitive[] {
   const out: SvgPrimitive[] = []
-  const adjust = findAdjust(ops)
+  const adjust = findOp(ops, 'adjust')
   if (adjust) {
     const kb = factor(adjust.brightness)
     const kc = factor(adjust.contrast)
@@ -124,7 +118,7 @@ export function compileSvgPrimitives(ops: readonly Operation[]): SvgPrimitive[] 
     }
     if (ks !== 1) out.push({ kind: 'saturate', value: round(ks) })
   }
-  const filter = findFilter(ops)
+  const filter = findOp(ops, 'filter')
   if (filter) {
     out.push({ kind: 'matrix', values: matrixFor(filter.name) })
   }

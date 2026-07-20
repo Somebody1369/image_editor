@@ -12,8 +12,8 @@
  */
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
-import type { AdjustOp, FilterName, Operation } from '../core/operations'
-import { isNeutralAdjust, makeAdjust, normalizeOperations } from '../core/operations'
+import type { AdjustOp, FilterName, Operation, ReadonlyOperation } from '../core/operations'
+import { findOp, isNeutralAdjust, makeAdjust, normalizeOperations } from '../core/operations'
 import type { RenderSource } from '../core/renderer'
 import type { EditDocument, SourceMeta } from '../core/document'
 import { createDocument } from '../core/document'
@@ -31,11 +31,15 @@ export interface CropRect {
   height: number
 }
 
+// Operations are intentionally FLAT (crop/adjust/filter carry only primitive fields), so
+// a per-op shallow spread is a complete clone for history snapshots — no aliasing across
+// undo entries. A nested op field would need a deep clone here (see NOTES: op model).
 const cloneOps = (ops: readonly Operation[]): Operation[] => ops.map((o) => ({ ...o }))
 
 /** Free a decoded ImageBitmap's native memory (canvas/img sources have no close()). */
 function releaseSource(src: RenderSource | null): void {
-  if (src && typeof (src as ImageBitmap).close === 'function') (src as ImageBitmap).close()
+  // typeof guard: ImageBitmap is undefined under jsdom (tests) but present in browsers.
+  if (typeof ImageBitmap !== 'undefined' && src instanceof ImageBitmap) src.close()
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -58,22 +62,20 @@ export const useEditorStore = defineStore('editor', () => {
   const embedOriginal = ref(false)
 
   // ---- derived views ----
-  /** Read-only view of the op list — mutations must go through the actions below. */
-  const operationList = computed<readonly Operation[]>(() => operations.value)
+  /** Read-only view of the op list — mutations must go through the actions below. The
+   *  ReadonlyOperation element type also blocks in-place field edits (`ops[0].x = …`). */
+  const operationList = computed<readonly ReadonlyOperation[]>(() => operations.value)
   const isLoaded = computed(() => original.value !== null)
   const hasEdits = computed(() => operations.value.length > 0)
   const canUndo = computed(() => undoStack.value.length > 0)
   const canRedo = computed(() => redoStack.value.length > 0)
 
-  const adjust = computed<AdjustOp>(
-    () => operations.value.find((o): o is AdjustOp => o.type === 'adjust') ?? makeAdjust(),
+  const adjust = computed<AdjustOp>(() => findOp(operations.value, 'adjust') ?? makeAdjust())
+  const filterName = computed<FilterName | null>(
+    () => findOp(operations.value, 'filter')?.name ?? null,
   )
-  const filterName = computed<FilterName | null>(() => {
-    const op = operations.value.find((o) => o.type === 'filter')
-    return op ? op.name : null
-  })
   const crop = computed<CropRect | null>(() => {
-    const op = operations.value.find((o) => o.type === 'crop')
+    const op = findOp(operations.value, 'crop')
     return op ? { x: op.x, y: op.y, width: op.width, height: op.height } : null
   })
 

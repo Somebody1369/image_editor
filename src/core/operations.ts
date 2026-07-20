@@ -41,6 +41,20 @@ export interface FilterOp {
 export type Operation = CropOp | AdjustOp | FilterOp
 export type OperationType = Operation['type']
 
+/** An operation whose fields can't be reassigned in place. Used for the store's public,
+ *  read-only op-list view so `store.operations[0].x = …` is a compile error, while still
+ *  being assignable to the `readonly Operation[]` the render/document code accepts. */
+export type ReadonlyOperation = Readonly<Operation>
+
+/** Find the (at most one) operation of a given type, narrowed to its concrete variant.
+ *  One place for the discriminant so call sites don't each re-spell the type guard. */
+export function findOp<T extends OperationType>(
+  ops: readonly Operation[],
+  type: T,
+): Extract<Operation, { type: T }> | undefined {
+  return ops.find((o): o is Extract<Operation, { type: T }> => o.type === type)
+}
+
 /**
  * Canonical pipeline order: geometry → tone → creative filter.
  * Chosen deliberately: cropping first keeps tone/filter math on the pixels that

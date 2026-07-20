@@ -9,7 +9,8 @@
  * The original is never mutated: every call draws from the immutable source onto a
  * fresh canvas.
  */
-import type { CropOp, Operation } from './operations'
+import type { Operation } from './operations'
+import { findOp } from './operations'
 import { applyPrimitives, compileSvgPrimitives } from './filter'
 
 export type RenderSource = ImageBitmap | HTMLImageElement | HTMLCanvasElement
@@ -33,7 +34,7 @@ export function getSourceSize(source: RenderSource): Size {
 
 /** Resolve the crop rectangle for a source, clamped to its bounds. Defaults to the whole image. */
 export function resolveCrop(ops: readonly Operation[], size: Size): Rect {
-  const crop = ops.find((o): o is CropOp => o.type === 'crop')
+  const crop = findOp(ops, 'crop')
   if (!crop) return { x: 0, y: 0, width: size.width, height: size.height }
 
   const x = Math.max(0, Math.min(crop.x, size.width))
