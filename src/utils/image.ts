@@ -42,6 +42,12 @@ export async function loadImageFile(file: File): Promise<LoadedImage> {
   }
 }
 
+/** Extract the MIME type from a data URL, tolerating both `data:mime;base64,…` and the
+ *  comma-terminated `data:mime,…` form (a hand-authored embeddedSource may use either). */
+function dataUrlMime(dataUrl: string): string {
+  return /^data:([^;,]+)/.exec(dataUrl)?.[1] ?? 'image/png'
+}
+
 /** Rebuild a render source from an embedded/loaded data URL (used when replaying a JSON document). */
 export function loadImageFromDataUrl(dataUrl: string, name = 'image'): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
@@ -54,7 +60,7 @@ export function loadImageFromDataUrl(dataUrl: string, name = 'image'): Promise<L
           name,
           width: img.naturalWidth,
           height: img.naturalHeight,
-          type: dataUrl.slice(5, dataUrl.indexOf(';')) || 'image/png',
+          type: dataUrlMime(dataUrl),
         },
       })
     img.onerror = () => reject(new Error('Embedded image could not be loaded.'))

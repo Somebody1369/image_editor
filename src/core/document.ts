@@ -12,7 +12,7 @@
  * web2print design that a backend can re-render for production output.
  */
 import type { FilterName, Operation } from './operations'
-import { normalizeOperations } from './operations'
+import { findOp, normalizeOperations } from './operations'
 
 export const DOCUMENT_VERSION = 1 as const
 
@@ -51,7 +51,14 @@ export function serializeDocument(doc: EditDocument): string {
 
 // ---- validation ------------------------------------------------------------
 
-class DocumentError extends Error {}
+/** Thrown for malformed/unsupported documents. Exported and `name`-tagged so callers
+ *  can tell "your JSON is invalid" apart from an unexpected internal failure. */
+export class DocumentError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'DocumentError'
+  }
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -121,6 +128,26 @@ export function validateDocument(data: unknown): EditDocument {
   const rawOps = data['operations']
   if (!Array.isArray(rawOps)) throw new DocumentError('"operations" must be an array')
   const operations = normalizeOperations(rawOps.map(parseOperation))
+
+  // A crop is stored in source pixels, so "replays unambiguously" only holds if its
+  // origin is actually inside the declared source. Reject a clearly-invalid crop here,
+  // at the document boundary, rather than letting resolveCrop silently repair it later.
+  // (Partial overflow at the far edge is left to resolveCrop's harmless clamp.)
+  const crop = findOp(operations, 'crop')
+  if (
+    crop &&
+    (crop.x < 0 ||
+      crop.y < 0 ||
+      crop.width <= 0 ||
+      crop.height <= 0 ||
+      crop.x >= meta.width ||
+      crop.y >= meta.height)
+  ) {
+    throw new DocumentError(
+      `crop origin (${crop.x}, ${crop.y}) size ${crop.width}×${crop.height} ` +
+        `does not fit the ${meta.width}×${meta.height} source`,
+    )
+  }
 
   const embeddedSource = data['embeddedSource']
   const doc: EditDocument = { version: DOCUMENT_VERSION, source: meta, operations }

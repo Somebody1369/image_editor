@@ -51,6 +51,14 @@ describe('validateDocument', () => {
     expect(() => validateDocument({ version: 1, source, operations: [crop] })).toThrow(/finite/i)
   })
 
+  it('rejects a crop whose origin falls outside the declared source', () => {
+    // source is 4000×3000; x=5000 is past the right edge, so the crop can't replay.
+    const crop = { type: 'crop', x: 5000, y: 0, width: 100, height: 100 }
+    expect(() => validateDocument({ version: 1, source, operations: [crop] })).toThrow(
+      /does not fit/i,
+    )
+  })
+
   it('collapses duplicate ops of the same type, keeping the last', () => {
     const doc = validateDocument({
       version: 1,
