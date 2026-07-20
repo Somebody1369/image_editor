@@ -12,12 +12,6 @@ body {
   min-height: 100vh;
 }
 
-/* Let the editor layout fill the space under the app bar. */
-.v-main {
-  display: flex;
-  flex-direction: column;
-}
-
 .visually-hidden {
   position: absolute;
   width: 1px;

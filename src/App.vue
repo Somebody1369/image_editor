@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay, useTheme } from 'vuetify'
 import {
   mdiBackupRestore,
@@ -31,6 +31,55 @@ watch(isMobile, (mobile) => {
 function closeDrawer(): void {
   drawerOpen.value = false
 }
+
+// The mobile drawer is a hand-rolled overlay, so it needs the dialog affordances a
+// v-navigation-drawer would give for free: Esc to close, a focus trap, and focus
+// save/restore. Wired here rather than in the template to keep the markup readable.
+const drawerEl = ref<HTMLElement | null>(null)
+let lastFocused: HTMLElement | null = null
+
+function drawerFocusables(): HTMLElement[] {
+  const el = drawerEl.value
+  if (!el) return []
+  const selector =
+    'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  return Array.from(el.querySelectorAll<HTMLElement>(selector)).filter(
+    (n) => n.offsetParent !== null,
+  )
+}
+
+function onDrawerKeydown(event: KeyboardEvent): void {
+  if (!drawerOpen.value) return
+  if (event.key === 'Escape') {
+    drawerOpen.value = false
+    return
+  }
+  if (event.key !== 'Tab') return
+  const items = drawerFocusables()
+  const first = items[0]
+  const last = items[items.length - 1]
+  if (!first || !last) return
+  const active = document.activeElement
+  if (event.shiftKey && active === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
+watch(drawerOpen, async (open) => {
+  if (!isMobile.value) return
+  if (open) {
+    lastFocused = document.activeElement as HTMLElement | null
+    await nextTick()
+    drawerFocusables()[0]?.focus()
+  } else if (lastFocused) {
+    lastFocused.focus()
+    lastFocused = null
+  }
+})
 
 // Editor keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y = redo.
 function onKeydown(event: KeyboardEvent): void {
@@ -74,7 +123,17 @@ function onDrop(event: DragEvent): void {
     <SvgFilterDefs />
 
     <div class="shell" :class="{ 'shell--mobile': isMobile }">
-      <aside class="sidebar" :class="{ 'sidebar--open': isMobile && drawerOpen }">
+      <aside
+        id="app-drawer"
+        ref="drawerEl"
+        class="sidebar"
+        :class="{ 'sidebar--open': isMobile && drawerOpen }"
+        :role="isMobile && drawerOpen ? 'dialog' : undefined"
+        :aria-modal="isMobile && drawerOpen ? 'true' : undefined"
+        :aria-label="isMobile && drawerOpen ? 'Menu' : undefined"
+        :inert="isMobile && !drawerOpen"
+        @keydown="onDrawerKeydown"
+      >
         <AppSidebar @navigate="closeDrawer" />
 
         <ControlsPanel v-if="!isMobile" />
@@ -135,6 +194,8 @@ function onDrop(event: DragEvent): void {
             size="small"
             variant="text"
             aria-label="Open menu"
+            aria-controls="app-drawer"
+            :aria-expanded="drawerOpen"
             @click="drawerOpen = !drawerOpen"
           />
           <span v-if="store.isLoaded" class="text-body-2 font-weight-medium text-truncate">
