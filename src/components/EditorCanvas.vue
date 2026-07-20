@@ -45,6 +45,10 @@ onMounted(draw)
       v-show="original"
       ref="canvasEl"
       class="preview-canvas"
+      role="img"
+      :aria-label="
+        store.sourceMeta ? `Edited preview of ${store.sourceMeta.name}` : 'Image preview'
+      "
       :style="{ filter: filterCss }"
     />
     <div v-if="!original" class="empty-state text-medium-emphasis">
@@ -52,7 +56,9 @@ onMounted(draw)
       <div class="text-body-1">No image loaded</div>
       <div class="text-caption mb-4">Drop an image here, upload one, or load the sample.</div>
       <div class="d-flex ga-2">
-        <v-btn color="primary" prepend-icon="mdi-upload" @click="emit('upload')">Upload image</v-btn>
+        <v-btn color="primary" prepend-icon="mdi-upload" @click="emit('upload')"
+          >Upload image</v-btn
+        >
         <v-btn variant="tonal" prepend-icon="mdi-image-multiple" @click="emit('sample')">
           Load sample
         </v-btn>
@@ -84,7 +90,11 @@ onMounted(draw)
     linear-gradient(45deg, transparent 75%, rgba(var(--v-theme-on-surface), 0.06) 75%),
     linear-gradient(-45deg, transparent 75%, rgba(var(--v-theme-on-surface), 0.06) 75%);
   background-size: 22px 22px;
-  background-position: 0 0, 0 11px, 11px -11px, -11px 0;
+  background-position:
+    0 0,
+    0 11px,
+    11px -11px,
+    -11px 0;
 }
 .empty-state {
   margin: auto;

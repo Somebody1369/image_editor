@@ -25,14 +25,20 @@ export function useExport() {
         store.exportFormat,
         store.exportQuality / 100,
       )
-      downloadBlob(blob, `${baseName()}-edited.${store.exportFormat === 'image/png' ? 'png' : 'jpg'}`)
+      downloadBlob(
+        blob,
+        `${baseName()}-edited.${store.exportFormat === 'image/png' ? 'png' : 'jpg'}`,
+      )
     } finally {
       exporting.value = false
     }
   }
 
   function exportJson(): void {
-    downloadText(serializeDocument(store.buildDocument(store.embedOriginal)), `${baseName()}.edits.json`)
+    downloadText(
+      serializeDocument(store.buildDocument(store.embedOriginal)),
+      `${baseName()}.edits.json`,
+    )
   }
 
   return { exporting, exportImage, exportJson }

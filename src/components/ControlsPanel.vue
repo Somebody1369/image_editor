@@ -48,7 +48,5 @@ const { isLoaded, sourceMeta } = storeToRefs(store)
     <ExportPanel />
   </div>
 
-  <div v-else class="pa-4 text-medium-emphasis text-caption">
-    Load an image to start editing.
-  </div>
+  <div v-else class="pa-4 text-medium-emphasis text-caption">Load an image to start editing.</div>
 </template>

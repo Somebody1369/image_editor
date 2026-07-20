@@ -28,6 +28,13 @@ const presets: { label: string; value: number }[] = [
 ]
 const activePreset = ref(0)
 
+/** Index of the aspect preset matching a rectangle's ratio (0 = Free if none). */
+function presetForRect(rect: { width: number; height: number }): number {
+  const ratio = rect.width / rect.height
+  const i = presets.findIndex((p) => Number.isFinite(p.value) && Math.abs(p.value - ratio) < 0.01)
+  return i === -1 ? 0 : i
+}
+
 function destroy(): void {
   cropper?.destroy()
   cropper = null
@@ -44,7 +51,11 @@ async function init(): Promise<void> {
     background: false,
     ready() {
       const c = crop.value
-      if (c) cropper?.setData({ x: c.x, y: c.y, width: c.width, height: c.height })
+      if (!c) return
+      cropper?.setData({ x: c.x, y: c.y, width: c.width, height: c.height })
+      // Reflect the saved crop's aspect in the chip group when it matches a preset.
+      const i = presetForRect(c)
+      if (i > 0) setPreset(i)
     },
   })
 }
@@ -62,15 +73,13 @@ function setPreset(index: number): void {
 function apply(): void {
   if (cropper) {
     const d = cropper.getData(true)
-    store.beginChange()
-    store.setCrop({ x: d.x, y: d.y, width: d.width, height: d.height })
+    store.commit(() => store.setCrop({ x: d.x, y: d.y, width: d.width, height: d.height }))
   }
   open.value = false
 }
 
 function clearCrop(): void {
-  store.beginChange()
-  store.setCrop(null)
+  store.commit(() => store.setCrop(null))
   open.value = false
 }
 </script>
@@ -102,12 +111,7 @@ function clearCrop(): void {
       <v-card-actions class="crop-tools px-4">
         <span class="text-caption text-medium-emphasis me-2">Aspect</span>
         <v-chip-group :model-value="activePreset" mandatory selected-class="text-primary">
-          <v-chip
-            v-for="(p, i) in presets"
-            :key="p.label"
-            size="small"
-            @click="setPreset(i)"
-          >
+          <v-chip v-for="(p, i) in presets" :key="p.label" size="small" @click="setPreset(i)">
             {{ p.label }}
           </v-chip>
         </v-chip-group>

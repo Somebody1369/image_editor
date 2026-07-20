@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisplay, useTheme } from 'vuetify'
 import { useEditorStore } from './stores/editor'
 import { useImageSource } from './composables/useImageSource'
@@ -11,11 +11,20 @@ import EditorCanvas from './components/EditorCanvas.vue'
 import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
-const { loading, error, loadFile, upload, loadSample, importJson, clearError } = useImageSource()
+const {
+  loading,
+  error,
+  notice,
+  loadFile,
+  upload,
+  loadSample,
+  importJson,
+  clearError,
+  clearNotice,
+} = useImageSource()
 const { exporting, exportImage } = useExport()
 
-const { width } = useDisplay()
-const isMobile = computed(() => width.value <= 760)
+const { mobile: isMobile } = useDisplay()
 const drawerOpen = ref(false)
 watch(isMobile, (mobile) => {
   if (!mobile) drawerOpen.value = false
@@ -23,6 +32,21 @@ watch(isMobile, (mobile) => {
 function closeDrawer(): void {
   drawerOpen.value = false
 }
+
+// Editor keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y = redo.
+function onKeydown(event: KeyboardEvent): void {
+  if (!(event.ctrlKey || event.metaKey)) return
+  const key = event.key.toLowerCase()
+  if (key === 'z' && !event.shiftKey) {
+    event.preventDefault()
+    store.undo()
+  } else if ((key === 'z' && event.shiftKey) || key === 'y') {
+    event.preventDefault()
+    store.redo()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeydown))
 
 const theme = useTheme()
 const isDark = computed(() => theme.global.current.value.dark)
@@ -177,8 +201,22 @@ function onDrop(event: DragEvent): void {
       </div>
     </div>
 
-    <v-snackbar :model-value="!!error" color="error" timeout="4000" @update:model-value="clearError">
+    <v-snackbar
+      :model-value="!!error"
+      color="error"
+      timeout="4000"
+      @update:model-value="clearError"
+    >
       {{ error }}
+    </v-snackbar>
+
+    <v-snackbar
+      :model-value="!!notice"
+      color="info"
+      timeout="6000"
+      @update:model-value="clearNotice"
+    >
+      {{ notice }}
     </v-snackbar>
   </v-app>
 </template>

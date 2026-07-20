@@ -7,6 +7,7 @@
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useEditorStore } from '../stores/editor'
+import { isNeutralAdjust } from '../core/operations'
 
 type AdjustKey = 'brightness' | 'contrast' | 'saturation'
 
@@ -19,12 +20,7 @@ const rows: { key: AdjustKey; label: string; icon: string }[] = [
   { key: 'saturation', label: 'Saturation', icon: 'mdi-palette-outline' },
 ]
 
-const isNeutral = computed(
-  () =>
-    adjust.value.brightness === 0 &&
-    adjust.value.contrast === 0 &&
-    adjust.value.saturation === 0,
-)
+const isNeutral = computed(() => isNeutralAdjust(adjust.value))
 
 const format = (v: number): string => (v > 0 ? `+${v}` : `${v}`)
 
@@ -33,16 +29,37 @@ function onInput(key: AdjustKey, value: number): void {
   store.setAdjust(patch)
 }
 
+// Keyboard parity with the pointer drag: arrow/Home/End/PageUp/Down keys change the
+// value without firing @start, so snapshot once at the start of a key gesture (and
+// coalesce auto-repeat into one undo step until the key is released / focus leaves).
+const VALUE_KEYS = new Set([
+  'ArrowLeft',
+  'ArrowRight',
+  'ArrowUp',
+  'ArrowDown',
+  'Home',
+  'End',
+  'PageUp',
+  'PageDown',
+])
+let keying = false
+function onKeydown(event: KeyboardEvent): void {
+  if (keying || !VALUE_KEYS.has(event.key)) return
+  keying = true
+  store.beginChange()
+}
+function endKeying(): void {
+  keying = false
+}
+
 function resetOne(key: AdjustKey): void {
   if (adjust.value[key] === 0) return
-  store.beginChange()
-  onInput(key, 0)
+  store.commit(() => onInput(key, 0))
 }
 
 function resetAll(): void {
   if (isNeutral.value) return
-  store.beginChange()
-  store.setAdjust({ brightness: 0, contrast: 0, saturation: 0 })
+  store.commit(() => store.setAdjust({ brightness: 0, contrast: 0, saturation: 0 }))
 }
 </script>
 
@@ -76,6 +93,9 @@ function resetAll(): void {
         :step="1"
         :aria-label="row.label"
         @start="store.beginChange()"
+        @keydown="onKeydown"
+        @keyup="endKeying"
+        @blur="endKeying"
         @update:model-value="onInput(row.key, $event)"
       >
         <template #append>
