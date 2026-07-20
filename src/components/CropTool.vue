@@ -67,8 +67,10 @@ watch(open, (isOpen) => {
 })
 
 function setPreset(index: number): void {
+  const preset = presets[index]
+  if (!preset) return
   activePreset.value = index
-  cropper?.setAspectRatio(presets[index].value)
+  cropper?.setAspectRatio(preset.value)
 }
 
 function apply(): void {
