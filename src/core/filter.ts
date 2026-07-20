@@ -18,6 +18,7 @@ const factor = (percent: number): number => 1 + percent / 100
 const round = (n: number): number => Math.round(n * 1000) / 1000
 
 /** CSS `grayscale(1)` as an feColorMatrix (Rec.709 luminance). */
+// prettier-ignore
 export const GREYSCALE_MATRIX: readonly number[] = [
   0.2126, 0.7152, 0.0722, 0, 0,
   0.2126, 0.7152, 0.0722, 0, 0,
@@ -26,6 +27,7 @@ export const GREYSCALE_MATRIX: readonly number[] = [
 ]
 
 /** CSS `sepia(1)` as an feColorMatrix (per the Filter Effects spec). */
+// prettier-ignore
 export const SEPIA_MATRIX: readonly number[] = [
   0.393, 0.769, 0.189, 0, 0,
   0.349, 0.686, 0.168, 0, 0,
@@ -83,13 +85,20 @@ export function compileSvgPrimitives(ops: readonly Operation[]): SvgPrimitive[] 
     const kc = factor(adjust.contrast)
     const ks = factor(adjust.saturation)
     if (kb !== 1 || kc !== 1) {
-      out.push({ kind: 'componentTransfer', slope: round(kb * kc), intercept: round(0.5 - 0.5 * kc) })
+      out.push({
+        kind: 'componentTransfer',
+        slope: round(kb * kc),
+        intercept: round(0.5 - 0.5 * kc),
+      })
     }
     if (ks !== 1) out.push({ kind: 'saturate', value: round(ks) })
   }
   const filter = findFilter(ops)
   if (filter) {
-    out.push({ kind: 'matrix', values: filter.name === 'greyscale' ? GREYSCALE_MATRIX : SEPIA_MATRIX })
+    out.push({
+      kind: 'matrix',
+      values: filter.name === 'greyscale' ? GREYSCALE_MATRIX : SEPIA_MATRIX,
+    })
   }
   return out
 }

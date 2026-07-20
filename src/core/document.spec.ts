@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Operation } from './operations'
-import {
-  createDocument,
-  parseDocument,
-  serializeDocument,
-  validateDocument,
-} from './document'
+import { createDocument, parseDocument, serializeDocument, validateDocument } from './document'
 
 const source = { name: 'poster.jpg', width: 4000, height: 3000, type: 'image/jpeg' }
 
@@ -51,12 +46,36 @@ describe('validateDocument', () => {
     ).toThrow(/blur/i)
   })
 
+  it('rejects non-finite numbers (NaN / Infinity)', () => {
+    const crop = { type: 'crop', x: 0, y: 0, width: Infinity, height: 10 }
+    expect(() => validateDocument({ version: 1, source, operations: [crop] })).toThrow(/finite/i)
+  })
+
+  it('collapses duplicate ops of the same type, keeping the last', () => {
+    const doc = validateDocument({
+      version: 1,
+      source,
+      operations: [
+        { type: 'adjust', brightness: 5, contrast: 0, saturation: 0 },
+        { type: 'adjust', brightness: 40, contrast: 0, saturation: 0 },
+      ],
+    })
+    const adjusts = doc.operations.filter((o) => o.type === 'adjust')
+    expect(adjusts).toHaveLength(1)
+    expect(adjusts[0]).toMatchObject({ brightness: 40 })
+  })
+
   it('clamps adjustment values into range', () => {
     const doc = validateDocument({
       version: 1,
       source,
       operations: [{ type: 'adjust', brightness: 999, contrast: -999, saturation: 0 }],
     })
-    expect(doc.operations[0]).toEqual({ type: 'adjust', brightness: 100, contrast: -100, saturation: 0 })
+    expect(doc.operations[0]).toEqual({
+      type: 'adjust',
+      brightness: 100,
+      contrast: -100,
+      saturation: 0,
+    })
   })
 })

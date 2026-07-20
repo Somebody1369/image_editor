@@ -12,7 +12,7 @@
  * web2print design that a backend can re-render for production output.
  */
 import type { FilterName, Operation } from './operations'
-import { sortOperations } from './operations'
+import { normalizeOperations } from './operations'
 
 export const DOCUMENT_VERSION = 1 as const
 
@@ -39,7 +39,7 @@ export function createDocument(
   const doc: EditDocument = {
     version: DOCUMENT_VERSION,
     source,
-    operations: sortOperations(operations),
+    operations: normalizeOperations(operations),
   }
   if (embeddedSource) doc.embeddedSource = embeddedSource
   return doc
@@ -58,8 +58,8 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function num(value: unknown, field: string): number {
-  if (typeof value !== 'number' || Number.isNaN(value)) {
-    throw new DocumentError(`Field "${field}" must be a number`)
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new DocumentError(`Field "${field}" must be a finite number`)
   }
   return value
 }
@@ -90,7 +90,9 @@ function parseOperation(raw: unknown, index: number): Operation {
     case 'filter': {
       const name = raw['name']
       if (typeof name !== 'string' || !FILTER_NAMES.includes(name as FilterName)) {
-        throw new DocumentError(`operations[${index}].name must be one of ${FILTER_NAMES.join(', ')}`)
+        throw new DocumentError(
+          `operations[${index}].name must be one of ${FILTER_NAMES.join(', ')}`,
+        )
       }
       return { type: 'filter', name: name as FilterName }
     }
@@ -102,7 +104,9 @@ function parseOperation(raw: unknown, index: number): Operation {
 export function validateDocument(data: unknown): EditDocument {
   if (!isRecord(data)) throw new DocumentError('Document must be a JSON object')
   if (data['version'] !== DOCUMENT_VERSION) {
-    throw new DocumentError(`Unsupported version: ${String(data['version'])} (expected ${DOCUMENT_VERSION})`)
+    throw new DocumentError(
+      `Unsupported version: ${String(data['version'])} (expected ${DOCUMENT_VERSION})`,
+    )
   }
   const source = data['source']
   if (!isRecord(source)) throw new DocumentError('Missing "source" object')
@@ -116,7 +120,7 @@ export function validateDocument(data: unknown): EditDocument {
 
   const rawOps = data['operations']
   if (!Array.isArray(rawOps)) throw new DocumentError('"operations" must be an array')
-  const operations = sortOperations(rawOps.map(parseOperation))
+  const operations = normalizeOperations(rawOps.map(parseOperation))
 
   const embeddedSource = data['embeddedSource']
   const doc: EditDocument = { version: DOCUMENT_VERSION, source: meta, operations }

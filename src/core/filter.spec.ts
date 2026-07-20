@@ -66,7 +66,8 @@ describe('canvas ↔ SVG parity for tone', () => {
         const kc = factor(contrast)
         for (const x of [0, 0.25, 0.5, 0.75, 1]) {
           const canvas = (x * kb - 0.5) * kc + 0.5
-          const svg = prim && prim.kind === 'componentTransfer' ? x * prim.slope + prim.intercept : x
+          const svg =
+            prim && prim.kind === 'componentTransfer' ? x * prim.slope + prim.intercept : x
           expect(svg).toBeCloseTo(canvas, 2)
         }
       }

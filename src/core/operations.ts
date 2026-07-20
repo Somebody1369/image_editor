@@ -63,14 +63,21 @@ export function isNeutralAdjust(a: Omit<AdjustOp, 'type'>): boolean {
   return a.brightness === 0 && a.contrast === 0 && a.saturation === 0
 }
 
-/** Return a copy of `ops` sorted into the canonical pipeline order (stable within a type). */
-export function sortOperations(ops: readonly Operation[]): Operation[] {
-  return [...ops].sort(
-    (a, b) => OPERATION_ORDER.indexOf(a.type) - OPERATION_ORDER.indexOf(b.type),
-  )
-}
-
-/** Exhaustiveness guard for switch statements over Operation['type']. */
-export function assertNever(value: never): never {
-  throw new Error(`Unhandled operation: ${JSON.stringify(value)}`)
+/**
+ * Normalise an operation list into the canonical shape the whole app relies on:
+ * at most one op of each type (the last one of a type wins) and always in canonical
+ * pipeline order. Enforcing this in one place means every entry point — store
+ * mutations AND document import/export — produces the same, unambiguous list, so a
+ * hand-written or duplicated op can never desync the render (which reads the first
+ * op of a type) from the serialized document (which would otherwise keep both).
+ */
+export function normalizeOperations(ops: readonly Operation[]): Operation[] {
+  const byType = new Map<OperationType, Operation>()
+  for (const op of ops) byType.set(op.type, op) // last of each type wins
+  const out: Operation[] = []
+  for (const type of OPERATION_ORDER) {
+    const op = byType.get(type)
+    if (op) out.push(op)
+  }
+  return out
 }

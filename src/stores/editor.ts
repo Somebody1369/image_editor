@@ -12,7 +12,7 @@
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
 import type { AdjustOp, FilterName, Operation } from '../core/operations'
-import { isNeutralAdjust, makeAdjust, sortOperations } from '../core/operations'
+import { isNeutralAdjust, makeAdjust, normalizeOperations } from '../core/operations'
 import type { RenderSource } from '../core/renderer'
 import type { EditDocument, SourceMeta } from '../core/document'
 import { createDocument } from '../core/document'
@@ -31,6 +31,11 @@ export interface CropRect {
 }
 
 const cloneOps = (ops: readonly Operation[]): Operation[] => ops.map((o) => ({ ...o }))
+
+/** Free a decoded ImageBitmap's native memory (canvas/img sources have no close()). */
+function releaseSource(src: RenderSource | null): void {
+  if (src && typeof (src as ImageBitmap).close === 'function') (src as ImageBitmap).close()
+}
 
 export const useEditorStore = defineStore('editor', () => {
   // ---- source (immutable once loaded) ----
@@ -52,6 +57,8 @@ export const useEditorStore = defineStore('editor', () => {
   const embedOriginal = ref(false)
 
   // ---- derived views ----
+  /** Read-only view of the op list — mutations must go through the actions below. */
+  const operationList = computed<readonly Operation[]>(() => operations.value)
   const isLoaded = computed(() => original.value !== null)
   const hasEdits = computed(() => operations.value.length > 0)
   const canUndo = computed(() => undoStack.value.length > 0)
@@ -91,26 +98,34 @@ export const useEditorStore = defineStore('editor', () => {
     undoStack.value.push(cloneOps(operations.value))
     operations.value = next
   }
+  /** Run `mutator` as one atomic, undoable change (snapshots first). */
+  function commit(mutator: () => void): void {
+    beginChange()
+    mutator()
+  }
 
   // ---- mutations (upsert-by-type keeps at most one of each; canonical order enforced) ----
+  // Bare mutators — they do NOT snapshot history. Wrap discrete actions in commit(),
+  // or call beginChange() once at the start of a live gesture (e.g. a slider drag).
   function setAdjust(partial: Partial<Omit<AdjustOp, 'type'>>): void {
     const next: AdjustOp = { ...adjust.value, ...partial, type: 'adjust' }
     const rest = operations.value.filter((o) => o.type !== 'adjust')
-    operations.value = sortOperations(isNeutralAdjust(next) ? rest : [...rest, next])
+    operations.value = normalizeOperations(isNeutralAdjust(next) ? rest : [...rest, next])
   }
   function setFilter(name: FilterName | null): void {
     const rest = operations.value.filter((o) => o.type !== 'filter')
-    operations.value = sortOperations(name ? [...rest, { type: 'filter', name }] : rest)
+    operations.value = normalizeOperations(name ? [...rest, { type: 'filter', name }] : rest)
   }
   function setCrop(rect: CropRect | null): void {
     const rest = operations.value.filter((o) => o.type !== 'crop')
-    operations.value = sortOperations(rect ? [...rest, { type: 'crop', ...rect }] : rest)
+    operations.value = normalizeOperations(rect ? [...rest, { type: 'crop', ...rect }] : rest)
   }
 
   function reset(): void {
     if (!hasEdits.value) return
-    beginChange()
-    operations.value = []
+    commit(() => {
+      operations.value = []
+    })
   }
 
   function setViewOriginal(value: boolean): void {
@@ -119,6 +134,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // ---- source + document ----
   function loadImage(payload: LoadPayload): void {
+    releaseSource(original.value)
     original.value = payload.bitmap
     sourceMeta.value = payload.meta
     sourceDataUrl.value = payload.dataUrl
@@ -130,6 +146,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   /** Unload the current image and return to the empty state. */
   function removeImage(): void {
+    releaseSource(original.value)
     original.value = null
     sourceMeta.value = null
     sourceDataUrl.value = null
@@ -141,21 +158,22 @@ export const useEditorStore = defineStore('editor', () => {
 
   function buildDocument(embed: boolean): EditDocument {
     if (!sourceMeta.value) throw new Error('No image loaded')
-    const embedded = embed ? sourceDataUrl.value ?? undefined : undefined
+    const embedded = embed ? (sourceDataUrl.value ?? undefined) : undefined
     return createDocument(sourceMeta.value, operations.value, embedded)
   }
 
   /** Replay: apply a document's operations onto the current original (undoable). */
   function applyOperations(ops: readonly Operation[]): void {
-    beginChange()
-    operations.value = sortOperations(cloneOps(ops))
+    commit(() => {
+      operations.value = normalizeOperations(cloneOps(ops))
+    })
   }
 
   return {
     original,
     sourceMeta,
     sourceDataUrl,
-    operations,
+    operations: operationList,
     viewOriginal,
     exportFormat,
     exportQuality,
@@ -169,6 +187,7 @@ export const useEditorStore = defineStore('editor', () => {
     crop,
     previewOperations,
     beginChange,
+    commit,
     undo,
     redo,
     setAdjust,
