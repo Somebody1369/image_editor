@@ -9,6 +9,7 @@ import { nextTick, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
+import { mdiCrop, mdiCropFree, mdiCropRotate } from '@mdi/js'
 import { useEditorStore } from '../stores/editor'
 
 const store = useEditorStore()
@@ -88,7 +89,7 @@ function clearCrop(): void {
   <v-btn
     block
     variant="tonal"
-    :prepend-icon="crop ? 'mdi-crop-rotate' : 'mdi-crop'"
+    :prepend-icon="crop ? mdiCropRotate : mdiCrop"
     :color="crop ? 'primary' : undefined"
     @click="open = true"
   >
@@ -116,7 +117,7 @@ function clearCrop(): void {
           </v-chip>
         </v-chip-group>
         <v-spacer />
-        <v-btn variant="text" size="small" prepend-icon="mdi-crop-free" @click="clearCrop">
+        <v-btn variant="text" size="small" :prepend-icon="mdiCropFree" @click="clearCrop">
           Clear crop
         </v-btn>
       </v-card-actions>

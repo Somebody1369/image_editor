@@ -1,6 +1,6 @@
 import 'vuetify/styles'
-import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
+import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 
 export const THEME_STORAGE_KEY = 'image-editor-theme'
 export const DARK_THEME = 'framerDark'
@@ -15,6 +15,9 @@ function initialTheme(): string {
 // Framer-like app chrome: near-black neutral surfaces, hairline borders, a single
 // blue accent for primary actions, restrained rounding.
 export const vuetify = createVuetify({
+  // SVG icons via @mdi/js: only the icon paths actually imported are bundled, instead
+  // of shipping the whole @mdi/font webfont. App icons are passed as path constants.
+  icons: { defaultSet: 'mdi', aliases, sets: { mdi } },
   display: {
     // The layout switches to the slide-in drawer below this width; exposed through
     // useDisplay().mobile so components don't hard-code the breakpoint.

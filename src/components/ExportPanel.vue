@@ -6,6 +6,7 @@
  */
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
+import { mdiCodeJson, mdiDownload } from '@mdi/js'
 import { useEditorStore } from '../stores/editor'
 import { useExport } from '../composables/useExport'
 
@@ -35,7 +36,7 @@ const isJpeg = computed(() => exportFormat.value === 'image/jpeg')
     <v-btn
       block
       color="primary"
-      prepend-icon="mdi-download"
+      :prepend-icon="mdiDownload"
       :loading="exporting"
       class="mb-4"
       @click="exportImage"
@@ -50,7 +51,7 @@ const isJpeg = computed(() => exportFormat.value === 'image/jpeg')
       color="primary"
       label="Embed original in JSON"
     />
-    <v-btn block variant="tonal" prepend-icon="mdi-code-json" @click="exportJson">
+    <v-btn block variant="tonal" :prepend-icon="mdiCodeJson" @click="exportJson">
       Export operations (JSON)
     </v-btn>
   </div>
