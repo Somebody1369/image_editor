@@ -73,13 +73,13 @@ function setPreset(index: number): void {
 function apply(): void {
   if (cropper) {
     const d = cropper.getData(true)
-    store.commit(() => store.setCrop({ x: d.x, y: d.y, width: d.width, height: d.height }))
+    store.setCrop({ x: d.x, y: d.y, width: d.width, height: d.height })
   }
   open.value = false
 }
 
 function clearCrop(): void {
-  store.commit(() => store.setCrop(null))
+  store.setCrop(null)
   open.value = false
 }
 </script>

@@ -34,10 +34,9 @@ describe('editor store — edit model', () => {
 })
 
 describe('editor store — history', () => {
-  it('undo/redo across an atomic change', () => {
+  it('a discrete action is one undo step without a manual snapshot', () => {
     const s = useEditorStore()
-    s.beginChange()
-    s.setAdjust({ brightness: 30 })
+    s.setAdjust({ brightness: 30 }) // committed setter — no beginChange() needed
     expect(s.adjust.brightness).toBe(30)
     expect(s.canUndo).toBe(true)
     s.undo()
@@ -46,9 +45,20 @@ describe('editor store — history', () => {
     expect(s.adjust.brightness).toBe(30)
   })
 
-  it('reset is undoable', () => {
+  it('a live gesture (beginChange + many updateAdjust) collapses to one undo step', () => {
     const s = useEditorStore()
     s.beginChange()
+    s.updateAdjust({ brightness: 10 })
+    s.updateAdjust({ brightness: 20 })
+    s.updateAdjust({ brightness: 30 })
+    expect(s.adjust.brightness).toBe(30)
+    s.undo() // a single undo, not three
+    expect(s.adjust.brightness).toBe(0)
+    expect(s.canRedo).toBe(true)
+  })
+
+  it('reset is undoable', () => {
+    const s = useEditorStore()
     s.setFilter('sepia')
     s.reset()
     expect(s.hasEdits).toBe(false)

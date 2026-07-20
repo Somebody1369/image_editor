@@ -4,10 +4,11 @@
  * store never writes edits back into the source, which is what keeps editing
  * non-destructive.
  *
- * History model: `beginChange()` snapshots the current operations onto the undo
- * stack and starts one atomic change. Discrete actions (toggle filter, apply crop,
- * reset) call it once; a slider drag calls it on pointer-down so a whole drag is a
- * single undo step.
+ * History model: discrete actions go through committed setters (`setFilter` /
+ * `setCrop` / `setAdjust`) or `commit(fn)` — each is exactly one undo step and the
+ * snapshot can't be forgotten. A live gesture (slider drag) is the one exception: it
+ * snapshots ONCE via `beginChange()` and then calls `updateAdjust()` per move, so the
+ * whole drag collapses to a single undo step.
  */
 import { computed, ref, shallowRef } from 'vue'
 import { defineStore } from 'pinia'
@@ -77,7 +78,7 @@ export const useEditorStore = defineStore('editor', () => {
   })
 
   /** Operations actually rendered in the preview — empty while comparing to the original. */
-  const previewOperations = computed<Operation[]>(() =>
+  const previewOperations = computed<readonly Operation[]>(() =>
     viewOriginal.value ? [] : operations.value,
   )
 
@@ -104,21 +105,40 @@ export const useEditorStore = defineStore('editor', () => {
     mutator()
   }
 
-  // ---- mutations (upsert-by-type keeps at most one of each; canonical order enforced) ----
-  // Bare mutators — they do NOT snapshot history. Wrap discrete actions in commit(),
-  // or call beginChange() once at the start of a live gesture (e.g. a slider drag).
-  function setAdjust(partial: Partial<Omit<AdjustOp, 'type'>>): void {
+  // ---- op writers (private): normalise the list; they do NOT touch history ----
+  // Not exported. Every public entry point below either wraps these in commit()
+  // (discrete actions) or pairs them with one beginChange() (a live gesture), so no
+  // caller can mutate the model without producing exactly one undo step.
+  function writeAdjust(partial: Partial<Omit<AdjustOp, 'type'>>): void {
     const next: AdjustOp = { ...adjust.value, ...partial, type: 'adjust' }
     const rest = operations.value.filter((o) => o.type !== 'adjust')
     operations.value = normalizeOperations(isNeutralAdjust(next) ? rest : [...rest, next])
   }
-  function setFilter(name: FilterName | null): void {
+  function writeFilter(name: FilterName | null): void {
     const rest = operations.value.filter((o) => o.type !== 'filter')
     operations.value = normalizeOperations(name ? [...rest, { type: 'filter', name }] : rest)
   }
-  function setCrop(rect: CropRect | null): void {
+  function writeCrop(rect: CropRect | null): void {
     const rest = operations.value.filter((o) => o.type !== 'crop')
     operations.value = normalizeOperations(rect ? [...rest, { type: 'crop', ...rect }] : rest)
+  }
+
+  // ---- discrete actions (public): one call = one undoable step; the snapshot is
+  // baked in, so a caller can't forget it. ----
+  function setAdjust(partial: Partial<Omit<AdjustOp, 'type'>>): void {
+    commit(() => writeAdjust(partial))
+  }
+  function setFilter(name: FilterName | null): void {
+    commit(() => writeFilter(name))
+  }
+  function setCrop(rect: CropRect | null): void {
+    commit(() => writeCrop(rect))
+  }
+
+  // ---- live gesture (public): the slider drag needs many mutations under a single
+  // undo step, so it snapshots ONCE via beginChange() then calls this per move. ----
+  function updateAdjust(partial: Partial<Omit<AdjustOp, 'type'>>): void {
+    writeAdjust(partial)
   }
 
   function reset(): void {
@@ -193,6 +213,7 @@ export const useEditorStore = defineStore('editor', () => {
     setAdjust,
     setFilter,
     setCrop,
+    updateAdjust,
     reset,
     setViewOriginal,
     loadImage,

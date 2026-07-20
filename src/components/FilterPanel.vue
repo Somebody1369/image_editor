@@ -15,7 +15,7 @@ const options: { label: string; value: FilterName | null }[] = [
 
 function select(value: FilterName | null): void {
   if (value === filterName.value) return
-  store.commit(() => store.setFilter(value))
+  store.setFilter(value)
 }
 </script>
 
