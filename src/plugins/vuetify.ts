@@ -1,23 +1,25 @@
 import 'vuetify/styles'
 import '@mdi/font/css/materialdesignicons.css'
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
 
 export const THEME_STORAGE_KEY = 'image-editor-theme'
 export const DARK_THEME = 'framerDark'
 export const LIGHT_THEME = 'framerLight'
 
 function initialTheme(): string {
-  const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : null
+  const stored =
+    typeof localStorage !== 'undefined' ? localStorage.getItem(THEME_STORAGE_KEY) : null
   return stored === LIGHT_THEME || stored === DARK_THEME ? stored : DARK_THEME
 }
 
 // Framer-like app chrome: near-black neutral surfaces, hairline borders, a single
 // blue accent for primary actions, restrained rounding.
 export const vuetify = createVuetify({
-  components,
-  directives,
+  display: {
+    // The layout switches to the slide-in drawer below this width; exposed through
+    // useDisplay().mobile so components don't hard-code the breakpoint.
+    mobileBreakpoint: 760,
+  },
   theme: {
     defaultTheme: initialTheme(),
     themes: {
