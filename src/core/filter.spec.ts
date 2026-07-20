@@ -74,4 +74,33 @@ describe('applyPrimitives (export pixel bake)', () => {
     )
     expect(boostedThenGrey[0]).toBe(80) // 40×2 = 80, luma of grey(80) = 80
   })
+
+  it('sepia maps pure red to the spec matrix result', () => {
+    // R' = 0.393·255 = 100.2, G' = 0.349·255 = 89.0, B' = 0.272·255 = 69.4.
+    expect(bake([255, 0, 0, 255], [{ type: 'filter', name: 'sepia' }])).toEqual([100, 89, 69, 255])
+  })
+
+  it('saturation −100 collapses a colour to its luminance on every channel', () => {
+    // saturate(0): every channel = 0.213·r + 0.715·g + 0.072·b. Pure red → 0.213·255 = 54.
+    expect(bake([255, 0, 0, 255], [makeAdjust({ saturation: -100 })])).toEqual([54, 54, 54, 255])
+  })
+
+  it('saturation +100 pushes channels apart around the luma axis', () => {
+    // saturate(2) on a muted red [150,100,100]: R rises, G/B fall symmetrically.
+    expect(bake([150, 100, 100, 255], [makeAdjust({ saturation: 100 })])).toEqual([
+      189, 89, 89, 255,
+    ])
+  })
+
+  it('clamps intermediate overflow to 8-bit BEFORE the next primitive (the preview-parity edge)', () => {
+    // brightness +100 (×2) sends R=200 to 400, which the JS path clamps to 255 *before*
+    // greyscale reads it, giving luma 133. A browser SVG filter graph does not clamp
+    // between chained primitives (it would see ~400 and give ~164) — this is exactly the
+    // pixel where the two backends can diverge, so we pin the JS side explicitly.
+    const [r, g, b] = bake(
+      [200, 50, 50, 255],
+      [makeAdjust({ brightness: 100 }), { type: 'filter', name: 'greyscale' }],
+    )
+    expect([r, g, b]).toEqual([133, 133, 133])
+  })
 })
