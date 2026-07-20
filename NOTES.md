@@ -56,15 +56,23 @@ list drives both render paths:
 - **export** — the _same_ primitive list is executed on the pixels by `applyPrimitives`
   (plain `ImageData` maths), baking the result at full resolution.
 
-Because both consume the identical list — same primitives, same order, same [0,1]
-clamp at each primitive boundary — the preview and the exported pixels agree **by
-construction**, not by two formulas happening to match. brightness (`×kb`) then
-contrast (`(x−0.5)·kc+0.5`) compose to one linear transfer `kb·kc·x + (0.5−0.5·kc)`;
-greyscale/sepia use the spec's exact colour matrices; `color-interpolation-filters` is
-`sRGB` to match the sRGB pixel maths. Because the export is our own `ImageData` pass
-rather than the browser's `ctx.filter`, it is deterministic and works even where
-`ctx.filter` is unavailable. A unit test bakes pixels through `applyPrimitives` and
-asserts the exact bytes (`src/core/filter.spec.ts`).
+Because both consume the identical list — same primitives, same order — the two
+backends apply the **same operations in the same order**, so they agree at the level of
+the model. They are still two independent _implementations_ (the browser's SVG filter
+engine vs. our JS `ImageData` pass), so byte-for-byte pixel agreement is not guaranteed:
+the JS path clamps and rounds to 8-bit after every primitive (via `Uint8ClampedArray`),
+whereas the browser keeps higher precision between chained primitives and need not clamp
+intermediate results. On a pixel that overflows mid-pipeline (e.g. a brightness boost
+that saturates before a filter) the two can differ by a few levels — see the
+overflow-then-filter case in `src/core/filter.spec.ts`. A rasterised SVG-vs-JS parity
+test would need a real browser (Vitest browser mode); the current tests pin the JS side.
+brightness (`×kb`) then contrast (`(x−0.5)·kc+0.5`) compose to one linear transfer
+`kb·kc·x + (0.5−0.5·kc)`; greyscale/sepia use the spec's exact colour matrices;
+`color-interpolation-filters` is `sRGB` to match the sRGB pixel maths. The export is our
+own `ImageData` pass rather than the browser's `ctx.filter`, so it is deterministic and
+works even where `ctx.filter` is unavailable. Unit tests bake pixels through
+`applyPrimitives` and assert exact bytes for brightness, contrast, greyscale, sepia and
+saturate, including the overflow-then-filter case (`src/core/filter.spec.ts`).
 
 Crop is pure geometry (a source sub-rectangle drawn with `drawImage`), stored in
 **original pixels** so it is resolution-independent and replays on the full-res
@@ -95,11 +103,15 @@ drags don't touch the canvas at all.
   says. `source` identifies the original; operations are in source pixels, so the
   document replays unambiguously.
 - **"Embed original" toggle** adds the source as a data URL so the document
-  self-replays in one click — handy to demonstrate the round-trip.
+  self-replays in one click — handy to demonstrate the round-trip. Note the embedded
+  source is the orientation-normalised, re-encoded image (a JPEG is re-encoded at
+  q0.92), not the original file's exact bytes: the embedded round-trip reproduces the
+  _operations_ faithfully, while the embedded pixels are a normalised copy.
 - **Import replays it.** With an embedded original the whole result is reproduced;
   otherwise the operations apply to the currently loaded image. `parseDocument`
-  validates shape, rejects unknown ops, and clamps values. `version` allows future
-  migration.
+  validates shape, rejects unknown ops, and clamps values. The `version` field is
+  reserved for future migration; it is currently v1-only — `parseDocument` rejects any
+  other version rather than migrating it.
 
 Because preview, export and replay all call the **same** renderer over the **same**
 op list, replaying a document reproduces the result by construction — verified by a
@@ -158,8 +170,12 @@ workflow runs lint, format-check, tests and the type-checked build on every push
 ICC colour management / CMYK output profiles (FOGRA/GRACoL) via a CMM such as Little
 CMS; a Curves/Levels tool; layers and multi-object designs; templates; **server-side
 render parity** so a backend reproduces the document for production output; a WebGL
-pipeline and wide-gamut output. All of these extend the same operation model rather
-than replacing it.
+pipeline and wide-gamut output. New _op types_ (Curves/Levels, more filters) extend the
+same model directly. Features that need multiple ops of one type or a user-controlled
+stage order (layers, two stacked filters, filter-before-adjust) would also require
+relaxing the current normalisation — at most one op per type in a fixed
+`crop → adjust → filter` order — which is a deliberate simplification for this scope,
+not an inherent limit of the op-list idea.
 
 The app is already fully client-side with no runtime network calls and no CDN assets,
 so it is offline-capable by construction. Making it an **offline-first, installable

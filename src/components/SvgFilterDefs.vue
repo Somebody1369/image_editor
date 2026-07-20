@@ -6,8 +6,9 @@
  * which is what makes the preview real-time. (The edit pipeline is expressed
  * natively as an SVG filter graph on an SVG-heavy stack.)
  *
- * color-interpolation-filters="sRGB" matches the sRGB space of the canvas
- * `ctx.filter` export, so the preview and the exported pixels agree.
+ * color-interpolation-filters="sRGB" makes the SVG filter operate in gamma sRGB, to
+ * match the JS export's ImageData maths (getImageData bytes are non-premultiplied
+ * sRGB). The export does NOT use ctx.filter — it runs `applyPrimitives` over the pixels.
  */
 import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
