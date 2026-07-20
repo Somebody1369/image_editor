@@ -1,29 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeAdjust } from './operations'
-import type { Operation } from './operations'
-import { compileCanvasFilter, compileSvgPrimitives, GREYSCALE_MATRIX, SEPIA_MATRIX } from './filter'
-
-describe('compileCanvasFilter', () => {
-  it('is "none" with no ops or a neutral adjust', () => {
-    expect(compileCanvasFilter([])).toBe('none')
-    expect(compileCanvasFilter([makeAdjust()])).toBe('none')
-  })
-
-  it('maps percentages to CSS filter factors', () => {
-    expect(compileCanvasFilter([makeAdjust({ brightness: 10 })])).toBe('brightness(1.1)')
-    expect(compileCanvasFilter([makeAdjust({ contrast: -50 })])).toBe('contrast(0.5)')
-    expect(compileCanvasFilter([makeAdjust({ saturation: 100 })])).toBe('saturate(2)')
-  })
-
-  it('emits filters after adjustments in canonical order', () => {
-    const ops: Operation[] = [
-      { type: 'filter', name: 'sepia' },
-      makeAdjust({ brightness: 20, saturation: -30 }),
-    ]
-    expect(compileCanvasFilter(ops)).toBe('brightness(1.2) saturate(0.7) sepia(1)')
-    expect(compileCanvasFilter([{ type: 'filter', name: 'greyscale' }])).toBe('grayscale(1)')
-  })
-})
+import { applyPrimitives, compileSvgPrimitives, GREYSCALE_MATRIX, SEPIA_MATRIX } from './filter'
 
 describe('compileSvgPrimitives', () => {
   it('is empty for a neutral adjust', () => {
@@ -40,7 +17,7 @@ describe('compileSvgPrimitives', () => {
     ])
   })
 
-  it('maps saturation and filters to colour matrices', () => {
+  it('maps saturation and filters to colour matrices, filter last', () => {
     expect(compileSvgPrimitives([makeAdjust({ saturation: 50 })])).toEqual([
       { kind: 'saturate', value: 1.5 },
     ])
@@ -53,24 +30,48 @@ describe('compileSvgPrimitives', () => {
   })
 })
 
-describe('canvas ↔ SVG parity for tone', () => {
-  // The SVG componentTransfer must reproduce the canvas `brightness() contrast()`
-  // result: out = kb·kc·x + (0.5 − 0.5·kc). Verified across a grid of pixels/params.
-  const factor = (p: number) => 1 + p / 100
+/** Run a single RGBA pixel through the export executor and read it back. */
+function bake(
+  rgba: [number, number, number, number],
+  ops: Parameters<typeof compileSvgPrimitives>[0],
+) {
+  const data = Uint8ClampedArray.from(rgba)
+  applyPrimitives(data, compileSvgPrimitives(ops))
+  return Array.from(data)
+}
 
-  it('produces the same channel value on both backends', () => {
-    for (const brightness of [-100, -40, 0, 30, 100]) {
-      for (const contrast of [-80, 0, 50, 100]) {
-        const [prim] = compileSvgPrimitives([makeAdjust({ brightness, contrast })])
-        const kb = factor(brightness)
-        const kc = factor(contrast)
-        for (const x of [0, 0.25, 0.5, 0.75, 1]) {
-          const canvas = (x * kb - 0.5) * kc + 0.5
-          const svg =
-            prim && prim.kind === 'componentTransfer' ? x * prim.slope + prim.intercept : x
-          expect(svg).toBeCloseTo(canvas, 2)
-        }
-      }
-    }
+describe('applyPrimitives (export pixel bake)', () => {
+  it('is a no-op for a neutral adjust', () => {
+    expect(bake([120, 130, 140, 255], [makeAdjust()])).toEqual([120, 130, 140, 255])
+  })
+
+  it('brightness scales channels and clamps at white', () => {
+    // brightness +50 → ×1.5: 100→150, 200→300 clamped to 255. Alpha untouched.
+    expect(bake([100, 200, 40, 255], [makeAdjust({ brightness: 50 })])).toEqual([150, 255, 60, 255])
+  })
+
+  it('contrast pivots around mid-grey', () => {
+    // contrast +100 → slope 2, intercept -0.5·255. Mid-grey barely moves; 200 pushes up, 60 down.
+    const [r, g, b] = bake([128, 200, 60, 255], [makeAdjust({ contrast: 100 })])
+    expect(r).toBe(128) // 2·128 − 127.5 = 128.5, essentially unchanged at the pivot
+    expect(g).toBe(255) // pushed to white
+    expect(b).toBe(0) // pushed to black
+  })
+
+  it('greyscale collapses a colour to its luminance on every channel', () => {
+    const [r, g, b, a] = bake([255, 0, 0, 255], [{ type: 'filter', name: 'greyscale' }])
+    expect(r).toBe(g)
+    expect(g).toBe(b)
+    expect(Math.round(0.2126 * 255)).toBe(r) // Rec.709 luma of pure red
+    expect(a).toBe(255)
+  })
+
+  it('applies tone before the filter (canonical order)', () => {
+    // A brightness boost then greyscale must land on the boosted pixel.
+    const boostedThenGrey = bake(
+      [40, 40, 40, 255],
+      [makeAdjust({ brightness: 100 }), { type: 'filter', name: 'greyscale' }],
+    )
+    expect(boostedThenGrey[0]).toBe(80) // 40×2 = 80, luma of grey(80) = 80
   })
 })

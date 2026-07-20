@@ -7,6 +7,7 @@
  */
 import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
+import { mdiImageMultiple, mdiImageOutline, mdiUpload } from '@mdi/js'
 import { useEditorStore } from '../stores/editor'
 import { compileSvgPrimitives } from '../core/filter'
 import { renderToCanvas } from '../core/renderer'
@@ -28,7 +29,7 @@ function draw(): void {
   const canvas = canvasEl.value
   const src = original.value
   if (!canvas || !src) return
-  renderToCanvas(src, previewOperations.value, canvas, { maxSize: PREVIEW_MAX, bakeFilter: false })
+  renderToCanvas(src, previewOperations.value, canvas, { maxSize: PREVIEW_MAX })
 }
 
 const filterCss = computed(() =>
@@ -52,14 +53,14 @@ onMounted(draw)
       :style="{ filter: filterCss }"
     />
     <div v-if="!original" class="empty-state text-medium-emphasis">
-      <v-icon size="52" icon="mdi-image-outline" class="mb-2" />
+      <v-icon size="52" :icon="mdiImageOutline" class="mb-2" />
       <div class="text-body-1">No image loaded</div>
       <div class="text-caption mb-4">Drop an image here, upload one, or load the sample.</div>
       <div class="d-flex ga-2">
-        <v-btn color="primary" prepend-icon="mdi-upload" @click="emit('upload')"
+        <v-btn color="primary" :prepend-icon="mdiUpload" @click="emit('upload')"
           >Upload image</v-btn
         >
-        <v-btn variant="tonal" prepend-icon="mdi-image-multiple" @click="emit('sample')">
+        <v-btn variant="tonal" :prepend-icon="mdiImageMultiple" @click="emit('sample')">
           Load sample
         </v-btn>
       </div>

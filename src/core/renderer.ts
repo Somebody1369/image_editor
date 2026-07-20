@@ -1,14 +1,16 @@
 /**
- * The single rendering path. `renderToCanvas` is used for BOTH the live preview
- * (downscaled via `maxSize`) and the full-resolution export bake — so "what you
- * see is what you export", and replaying the op-model reproduces the result.
+ * The single rendering path. `renderToCanvas` draws only the geometry (the cropped
+ * sub-rectangle of the immutable source, optionally downscaled) — it is used for BOTH
+ * the live preview and the export bake. Colour is applied on top:
+ *   - preview: declaratively, by the SVG `<filter>` referenced with CSS `filter:url()`;
+ *   - export:  by `applyPrimitives` over the pixels (see `renderToBlob`).
+ * Both consume the same compiled primitive list, so what you see is what you export.
  *
  * The original is never mutated: every call draws from the immutable source onto a
- * fresh canvas. Crop is pure geometry (a source sub-rectangle); tone/filter are the
- * compiled `ctx.filter` string.
+ * fresh canvas.
  */
 import type { CropOp, Operation } from './operations'
-import { compileCanvasFilter } from './filter'
+import { applyPrimitives, compileSvgPrimitives } from './filter'
 
 export type RenderSource = ImageBitmap | HTMLImageElement | HTMLCanvasElement
 
@@ -44,15 +46,9 @@ export function resolveCrop(ops: readonly Operation[], size: Size): Rect {
 export interface RenderOptions {
   /** Downscale so the longest output edge is at most this many pixels (preview perf). */
   maxSize?: number
-  /**
-   * Bake the colour transform into pixels via `ctx.filter` (used for the export).
-   * The live preview leaves this `false` and applies the transform declaratively
-   * through the SVG <filter>, so the source is only ever cropped here. Default `true`.
-   */
-  bakeFilter?: boolean
 }
 
-/** Render the pipeline (crop → adjust → filter) onto `target`. Sizes the canvas to the output. */
+/** Render the crop geometry (crop → optional downscale) onto `target`. Sizes the canvas to the output. */
 export function renderToCanvas(
   source: RenderSource,
   ops: readonly Operation[],
@@ -77,11 +73,30 @@ export function renderToCanvas(
   if (!ctx) throw new Error('2D canvas context unavailable')
 
   ctx.clearRect(0, 0, outW, outH)
-  if (options.bakeFilter !== false) ctx.filter = compileCanvasFilter(ops)
   ctx.imageSmoothingQuality = 'high'
   ctx.drawImage(source, crop.x, crop.y, crop.width, crop.height, 0, 0, outW, outH)
-  ctx.filter = 'none'
   return { width: outW, height: outH }
+}
+
+/** Bake the colour pipeline into the canvas pixels (no-op when there is nothing to apply). */
+function bakeColor(target: HTMLCanvasElement, ops: readonly Operation[]): void {
+  const primitives = compileSvgPrimitives(ops)
+  if (!primitives.length) return
+  const ctx = target.getContext('2d')
+  if (!ctx) throw new Error('2D canvas context unavailable')
+  const image = ctx.getImageData(0, 0, target.width, target.height)
+  applyPrimitives(image.data, primitives)
+  ctx.putImageData(image, 0, 0)
+}
+
+/** Composite the canvas over a solid colour, flattening transparency (for formats without alpha). */
+function flattenOnto(target: HTMLCanvasElement, color: string): void {
+  const ctx = target.getContext('2d')
+  if (!ctx) throw new Error('2D canvas context unavailable')
+  ctx.globalCompositeOperation = 'destination-over'
+  ctx.fillStyle = color
+  ctx.fillRect(0, 0, target.width, target.height)
+  ctx.globalCompositeOperation = 'source-over'
 }
 
 /** Full-resolution export bake → Blob (PNG by default). */
@@ -93,6 +108,9 @@ export function renderToBlob(
 ): Promise<Blob> {
   const canvas = document.createElement('canvas')
   renderToCanvas(source, ops, canvas)
+  bakeColor(canvas, ops)
+  // JPEG has no alpha channel; flatten onto white so transparency doesn't turn black.
+  if (mime === 'image/jpeg') flattenOnto(canvas, '#ffffff')
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (blob) => (blob ? resolve(blob) : reject(new Error('Export failed: toBlob returned null'))),
