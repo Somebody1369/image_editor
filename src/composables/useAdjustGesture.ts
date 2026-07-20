@@ -10,6 +10,7 @@
  * no gesture armed still commits as its own undo step, so no edit is ever lost from
  * history.
  */
+import { getCurrentScope, onScopeDispose, ref } from 'vue'
 import { useEditorStore } from '../stores/editor'
 
 type AdjustKey = 'brightness' | 'contrast' | 'saturation'
@@ -25,15 +26,31 @@ const VALUE_KEYS = new Set([
   'PageDown',
 ])
 
+// Shared signal: true while a slider gesture is mid-flight (armed, maybe not yet
+// snapshotted). The global undo/redo shortcut reads this so Ctrl/⌘+Z can't pop a
+// history step out from under an in-progress drag (which would desync its baseline).
+const active = ref(false)
+export const isAdjustGestureActive = active
+
 export function useAdjustGesture() {
   const store = useEditorStore()
   let armed = false
   let snapshotted = false
 
+  function arm(): void {
+    armed = true
+    active.value = true
+  }
+
   function end(): void {
     armed = false
     snapshotted = false
+    active.value = false
   }
+
+  // If the panel unmounts mid-gesture (e.g. a resize collapses the sidebar during a
+  // drag), the pointerup/keyup that would end() may never fire — reset defensively.
+  if (getCurrentScope()) onScopeDispose(end)
 
   /** A slider emitted a new value. */
   function apply(key: AdjustKey, value: number): void {
@@ -51,11 +68,11 @@ export function useAdjustGesture() {
 
   /** Pointer-down on the slider: arm; the snapshot waits for the first real change. */
   function pointerStart(): void {
-    armed = true
+    arm()
   }
 
   function keydown(event: KeyboardEvent): void {
-    if (VALUE_KEYS.has(event.key)) armed = true
+    if (VALUE_KEYS.has(event.key)) arm()
   }
 
   function keyup(event?: KeyboardEvent): void {

@@ -11,11 +11,14 @@ import Cropper from 'cropperjs'
 import 'cropperjs/dist/cropper.css'
 import { mdiCrop, mdiCropFree, mdiCropRotate } from '@mdi/js'
 import { useEditorStore } from '../stores/editor'
+import { registerDialog } from '../composables/useDialogGuard'
 
 const store = useEditorStore()
 const { sourceDataUrl, crop } = storeToRefs(store)
 
 const open = ref(false)
+// Let the global undo/redo shortcut know a modal is up (see useDialogGuard).
+registerDialog(open)
 const imgEl = ref<HTMLImageElement | null>(null)
 let cropper: Cropper | null = null
 

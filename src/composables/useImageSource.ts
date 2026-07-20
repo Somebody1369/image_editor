@@ -13,7 +13,7 @@ import {
   pickJsonFile,
 } from '../utils/image'
 import type { EditDocument } from '../core/document'
-import { parseDocument } from '../core/document'
+import { DocumentError, parseDocument } from '../core/document'
 import { useNotify } from './useNotify'
 
 // Module-level singleton: `loading` is shared across every call site (the app bar, the
@@ -28,6 +28,7 @@ export function useImageSource() {
   async function loadFile(file: File): Promise<void> {
     loading.value = true
     error.value = null
+    notice.value = null // a stale crop-mismatch notice shouldn't linger onto a new image
     try {
       store.loadImage(await loadImageFile(file))
     } catch (e) {
@@ -44,6 +45,7 @@ export function useImageSource() {
 
   function loadSample(): void {
     error.value = null
+    notice.value = null
     store.loadImage(createSampleImage())
   }
 
@@ -52,9 +54,8 @@ export function useImageSource() {
    * reproduced in one step; otherwise the operations are applied onto the currently
    * loaded image (matching the brief's "alongside the image" thin form).
    */
-  async function importJson(): Promise<void> {
-    const file = await pickJsonFile()
-    if (!file) return
+  /** Replay a JSON document from an already-obtained File (shared by the picker and drag-drop). */
+  async function importJsonFile(file: File): Promise<void> {
     loading.value = true
     error.value = null
     notice.value = null
@@ -70,24 +71,32 @@ export function useImageSource() {
         error.value = 'This JSON has no embedded image — load the original first, then import.'
       }
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Could not import document.'
+      // A DocumentError carries a user-facing validation message; anything else is an
+      // unexpected internal failure and shouldn't be blamed on the user's file.
+      error.value = e instanceof DocumentError ? e.message : 'Could not import this document.'
     } finally {
       loading.value = false
     }
   }
 
+  async function importJson(): Promise<void> {
+    const file = await pickJsonFile()
+    if (file) await importJsonFile(file)
+  }
+
   /**
    * A crop is stored in the original's pixels, so replaying a thin document onto a
    * differently-sized image would clamp it to something meaningless. It still applies
-   * (adjust/filter are size-independent), but warn so the mismatch isn't silent.
+   * (adjust/filter are size-independent), but warn so the mismatch isn't silent. Names
+   * both images so the user can tell they loaded the wrong original.
    */
   function warnOnSizeMismatch(doc: EditDocument): void {
     const cur = store.sourceMeta
     const hasCrop = doc.operations.some((o) => o.type === 'crop')
     if (hasCrop && cur && (cur.width !== doc.source.width || cur.height !== doc.source.height)) {
       notice.value =
-        `These edits were made for a ${doc.source.width}×${doc.source.height} image; ` +
-        `the crop may not match the current ${cur.width}×${cur.height} image.`
+        `These edits target “${doc.source.name}” (${doc.source.width}×${doc.source.height}); ` +
+        `the crop may not match the current “${cur.name}” (${cur.width}×${cur.height}).`
     }
   }
 
@@ -99,6 +108,7 @@ export function useImageSource() {
     upload,
     loadSample,
     importJson,
+    importJsonFile,
     clearError,
     clearNotice,
   }
