@@ -37,9 +37,10 @@ npm run format:check  # Prettier
 
 Edits are modelled as an ordered, serializable list of operations
 (`crop → adjust → filter`). The immutable original plus that list is _replayed_ to
-derive every preview and export. The op-model compiles to two colour backends over
-the same parameters: an SVG `<filter>` for the live preview and a `ctx.filter` bake
-for the export. See [`NOTES.md`](./NOTES.md) for the full rationale and trade-offs.
+derive every preview and export. The op-model compiles to one ordered list of colour
+primitives that drives both an SVG `<filter>` live preview and an `ImageData` pixel
+bake for the export, so preview and export agree by construction. See
+[`NOTES.md`](./NOTES.md) for the full rationale and trade-offs.
 
 ## Structure
 

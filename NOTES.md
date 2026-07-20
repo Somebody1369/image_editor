@@ -42,24 +42,29 @@ first so tone/filter act on surviving pixels; the filter last so e.g. greyscale
 lands on the colour-corrected image). The store keeps at most one op of each type
 and always stores them in canonical order.
 
-## Rendering: one model, two backends
+## Rendering: one model, one primitive list
 
-The op-model is the single source of truth. It compiles to **two interchangeable
-colour backends over the same parameters** (`src/core/filter.ts`):
+The op-model is the single source of truth. It compiles **once** to an ordered list of
+colour **primitives** (`compileSvgPrimitives` in `src/core/filter.ts`), and that one
+list drives both render paths:
 
-- **SVG `<filter>`** — drives the **live preview**. The preview canvas draws only the
-  cropped source; the colour transform is a real SVG filter graph referenced with
-  CSS `filter: url(#editorFilter)`. Dragging a slider only updates filter primitive
-  attributes → the preview updates in real time with **no canvas redraw**. An
-  SVG-heavy front-end stack makes an SVG filter graph the natural way to express
-  the pipeline.
-- **`ctx.filter` string** — bakes the **export** at full resolution.
+- **live preview** — the primitive list is rendered declaratively as an SVG `<filter>`
+  graph, referenced from the preview canvas with CSS `filter: url(#editorFilter)`.
+  Dragging a slider only updates primitive attributes → the preview updates in real
+  time with **no canvas redraw**. An SVG-heavy front-end stack makes an SVG filter
+  graph the natural way to express the pipeline.
+- **export** — the _same_ primitive list is executed on the pixels by `applyPrimitives`
+  (plain `ImageData` maths), baking the result at full resolution.
 
-Both follow the CSS Filter Effects spec, so they agree. brightness (`×kb`) then
+Because both consume the identical list — same primitives, same order, same [0,1]
+clamp at each primitive boundary — the preview and the exported pixels agree **by
+construction**, not by two formulas happening to match. brightness (`×kb`) then
 contrast (`(x−0.5)·kc+0.5`) compose to one linear transfer `kb·kc·x + (0.5−0.5·kc)`;
-greyscale/sepia use the spec's exact colour matrices; `color-interpolation-filters`
-is set to `sRGB` so the SVG preview matches the sRGB canvas export. A unit test
-asserts the two backends stay in agreement (`src/core/filter.spec.ts`).
+greyscale/sepia use the spec's exact colour matrices; `color-interpolation-filters` is
+`sRGB` to match the sRGB pixel maths. Because the export is our own `ImageData` pass
+rather than the browser's `ctx.filter`, it is deterministic and works even where
+`ctx.filter` is unavailable. A unit test bakes pixels through `applyPrimitives` and
+asserts the exact bytes (`src/core/filter.spec.ts`).
 
 Crop is pure geometry (a source sub-rectangle drawn with `drawImage`), stored in
 **original pixels** so it is resolution-independent and replays on the full-res
@@ -120,9 +125,11 @@ src/
 ```
 
 `core/` has zero Vue imports — the edit model is independent of the UI, which is the
-part the brief is really asking about. 24 unit tests cover the compilers, the
-document round-trip/validation (including duplicate-op collapsing and non-finite
-rejection), the crop geometry, and the store (dedup, canonical order, undo/redo).
+part the brief is really asking about. 30 unit tests cover the primitive compiler and
+the pixel-bake executor, the document round-trip/validation (including duplicate-op
+collapsing and non-finite rejection), the crop geometry, the store (dedup, canonical
+order, undo/redo) and the slider-gesture history (one undo step per drag, no empty
+steps).
 
 Stack: Vue 3 + Vuetify 3 + Pinia + TypeScript (strict), Vite, cropperjs, Vitest.
 ESLint (flat config) + Prettier enforce correctness and layout; a GitHub Actions
@@ -130,10 +137,13 @@ workflow runs lint, format-check, tests and the type-checked build on every push
 
 ## Trade-offs & known limitations
 
-- **Two colour backends** (SVG preview / canvas export) instead of one renderer. The
-  win is a declarative, real-time, SVG-native preview; the risk (drift) is contained
-  because both compile from one op-model, both follow the spec, and a test pins their
-  agreement.
+- **Two colour _implementations_** (an SVG `<filter>` for the live preview, an
+  `ImageData` pass for the export) — but over **one** compiled primitive list, so they
+  apply the same primitives in the same order. The preview stays declarative and
+  real-time; the export stays deterministic and independent of `ctx.filter`. A
+  pixel-level test pins the executor's output.
+- **JPEG export flattens transparency onto white** (JPEG has no alpha channel), so a
+  transparent PNG doesn't turn black on export; PNG keeps its alpha.
 - **Colour is sRGB, browser-defined** (CSS/SVG filter math). Fine for a screen
   editor; a print pipeline would want managed colour (see roadmap).
 - **Undo granularity is per gesture.** A snapshot is taken at the start of an
