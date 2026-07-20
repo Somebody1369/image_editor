@@ -49,7 +49,7 @@ function resetAll(): void {
         :disabled="isNeutral"
         @click="resetAll"
       >
-        Reset all
+        Reset adjustments
       </v-btn>
     </div>
 

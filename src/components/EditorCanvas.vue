@@ -17,7 +17,7 @@ const PREVIEW_MAX = 1600
 const emit = defineEmits<{ upload: []; sample: [] }>()
 
 const store = useEditorStore()
-const { original, previewOperations } = storeToRefs(store)
+const { original, previewOperations, sourceMeta } = storeToRefs(store)
 const canvasEl = ref<HTMLCanvasElement | null>(null)
 
 function cropKey(): string {
@@ -47,9 +47,7 @@ onMounted(draw)
       ref="canvasEl"
       class="preview-canvas"
       role="img"
-      :aria-label="
-        store.sourceMeta ? `Edited preview of ${store.sourceMeta.name}` : 'Image preview'
-      "
+      :aria-label="sourceMeta ? `Edited preview of ${sourceMeta.name}` : 'Image preview'"
       :style="{ filter: filterCss }"
     />
     <div v-if="!original" class="empty-state text-medium-emphasis">

@@ -11,6 +11,10 @@ import { useEditorStore } from '../stores/editor'
 import { useExport } from '../composables/useExport'
 
 const store = useEditorStore()
+// Export settings are plain preferences, not undoable operations, so they're bound
+// two-way directly — unlike the adjust/filter controls, which route through store
+// actions to land on the history. (The "mutations go through actions" rule is about
+// the operation model / undo-redo, which these settings deliberately sit outside of.)
 const { exportFormat, exportQuality, embedOriginal } = storeToRefs(store)
 const { exporting, exportImage, exportJson } = useExport()
 

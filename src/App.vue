@@ -13,6 +13,8 @@ import {
 import { useEditorStore } from './stores/editor'
 import { useImageSource } from './composables/useImageSource'
 import { useExport } from './composables/useExport'
+import { hasOpenDialog } from './composables/useDialogGuard'
+import { isAdjustGestureActive } from './composables/useAdjustGesture'
 import { DARK_THEME, LIGHT_THEME, THEME_STORAGE_KEY } from './plugins/vuetify'
 import AppSidebar from './components/AppSidebar.vue'
 import ControlsPanel from './components/ControlsPanel.vue'
@@ -20,7 +22,8 @@ import EditorCanvas from './components/EditorCanvas.vue'
 import SvgFilterDefs from './components/SvgFilterDefs.vue'
 
 const store = useEditorStore()
-const { error, notice, loadFile, upload, loadSample, clearError, clearNotice } = useImageSource()
+const { error, notice, loadFile, upload, loadSample, importJsonFile, clearError, clearNotice } =
+  useImageSource()
 const { exporting, exportImage } = useExport()
 
 const { mobile: isMobile } = useDisplay()
@@ -84,10 +87,10 @@ watch(drawerOpen, async (open) => {
 // Editor keyboard shortcuts: Ctrl/Cmd+Z = undo, Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y = redo.
 function onKeydown(event: KeyboardEvent): void {
   if (!(event.ctrlKey || event.metaKey)) return
-  // Don't mutate edits behind an open modal dialog (e.g. the crop modal, whose cropper
-  // is seeded once and wouldn't reflect an undo/redo happening under it). Scoped to
-  // .v-dialog so non-modal overlays (snackbars, menus) don't block the shortcut.
-  if (document.querySelector('.v-dialog.v-overlay--active')) return
+  // Don't mutate edits behind an open modal dialog (the crop modal is seeded once and
+  // wouldn't reflect an undo under it) or mid-slider-gesture (an undo would desync the
+  // drag's baseline) — both tracked as reactive state, not by probing the DOM.
+  if (hasOpenDialog.value || isAdjustGestureActive.value) return
   const key = event.key.toLowerCase()
   if (key === 'z' && !event.shiftKey) {
     event.preventDefault()
@@ -112,9 +115,31 @@ function toggleTheme(): void {
   }
 }
 
+// Drag-and-drop: highlight the drop zone while a file is over it, and route a dropped
+// .edits.json to the import path (not the image loader, which would reject it).
+const isDraggingFile = ref(false)
+
+function onDragEnter(): void {
+  isDraggingFile.value = true
+}
+function onDragLeave(event: DragEvent): void {
+  const target = event.currentTarget
+  // Ignore leave events fired as the pointer moves between child elements.
+  if (
+    target instanceof Node &&
+    event.relatedTarget instanceof Node &&
+    target.contains(event.relatedTarget)
+  ) {
+    return
+  }
+  isDraggingFile.value = false
+}
 function onDrop(event: DragEvent): void {
+  isDraggingFile.value = false
   const file = event.dataTransfer?.files?.[0]
-  if (file) void loadFile(file)
+  if (!file) return
+  const isJson = file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
+  void (isJson ? importJsonFile(file) : loadFile(file))
 }
 </script>
 
@@ -251,7 +276,14 @@ function onDrop(event: DragEvent): void {
           </v-btn>
         </header>
 
-        <main class="canvas-area" @dragover.prevent @drop.prevent="onDrop">
+        <main
+          class="canvas-area"
+          :class="{ 'canvas-area--dragover': isDraggingFile }"
+          @dragover.prevent
+          @dragenter.prevent="onDragEnter"
+          @dragleave="onDragLeave"
+          @drop.prevent="onDrop"
+        >
           <EditorCanvas @upload="upload" @sample="loadSample" />
         </main>
 
@@ -276,6 +308,10 @@ function onDrop(event: DragEvent): void {
     >
       {{ notice }}
     </v-snackbar>
+
+    <!-- Vuetify's snackbar announces politely (role="status"); mirror errors into an
+         assertive live region so a failure interrupts assistive tech. -->
+    <div class="visually-hidden" role="alert" aria-live="assertive">{{ error }}</div>
   </v-app>
 </template>
 
@@ -315,6 +351,12 @@ function onDrop(event: DragEvent): void {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
+  transition: background 0.15s ease;
+}
+.canvas-area--dragover {
+  outline: 2px dashed rgb(var(--v-theme-primary));
+  outline-offset: -10px;
+  background: rgba(var(--v-theme-primary), 0.06);
 }
 
 /* Mobile: the sidebar becomes a slide-in drawer and the page scrolls. */
